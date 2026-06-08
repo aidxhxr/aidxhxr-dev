@@ -16,9 +16,14 @@ export default function ProjectsPage() {
       <p className="text-xs text-dim mb-10">
         things I&apos;ve built and written about
       </p>
-      <ul className="space-y-14">
-        {projects.map((p) => (
+      <ul>
+        {projects.map((p, i) => (
           <li key={p.name}>
+            {i > 0 && (
+              <div className="py-8">
+                <div className="w-12 border-t border-border" />
+              </div>
+            )}
             {p.image ? (
               <div className="relative w-full aspect-video mb-4 rounded overflow-hidden border border-border">
                 <Image
@@ -33,7 +38,7 @@ export default function ProjectsPage() {
             )}
             <div className="flex items-baseline justify-between gap-4 mb-2">
               <span className="text-sm text-fg font-medium">{p.name}</span>
-              <span className="text-xs font-mono text-dim shrink-0">{p.year}</span>
+              <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
             </div>
             <p className="text-sm text-muted leading-relaxed mb-3">
               {p.description}
