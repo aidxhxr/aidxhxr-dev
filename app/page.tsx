@@ -18,7 +18,7 @@ export default function Home() {
 
       <section className="space-y-2 text-sm">
         <Row label="speaks" value="C++ · Python · TypeScript · Go" />
-        <Row label="into" value="ML systems · LocalLLM · CUDA · distributed infra · SWE" />
+        <Row label="digging" value="ML systems · LocalLLM · CUDA · distributed infra · SWE" />
         <Row
           label="email"
           value={
@@ -30,6 +30,36 @@ export default function Home() {
             </a>
           }
         />
+        <div className="sm:hidden">
+          <Row
+            label="github"
+            value={
+              <a
+                href="https://github.com/aidxhxr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted hover:text-fg transition-colors"
+              >
+                aidxhxr ↗
+              </a>
+            }
+          />
+        </div>
+        <div className="sm:hidden">
+          <Row
+            label="linkedin"
+            value={
+              <a
+                href="https://www.linkedin.com/in/amirkhan-aidarkhan-53b926347"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted hover:text-fg transition-colors"
+              >
+                amirkhan-aidarkhan ↗
+              </a>
+            }
+          />
+        </div>
       </section>
 
       {recent.length > 0 && (
@@ -42,7 +72,7 @@ export default function Home() {
               <li key={p.name}>
                 <div className="flex items-baseline justify-between gap-4 mb-1">
                   <span className="text-sm text-fg">{p.name}</span>
-                  <span className="text-xs font-mono text-dim shrink-0">{p.year}</span>
+                  <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
                 </div>
                 <p className="text-sm text-muted leading-relaxed mb-2">
                   {p.description}
@@ -64,6 +94,16 @@ export default function Home() {
                       className="text-dim hover:text-muted transition-colors"
                     >
                       github ↗
+                    </a>
+                  )}
+                  {p.demo && (
+                    <a
+                      href={p.demo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-dim hover:text-muted transition-colors"
+                    >
+                      demo ↗
                     </a>
                   )}
                 </div>
