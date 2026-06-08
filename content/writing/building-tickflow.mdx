@@ -1,0 +1,35 @@
+I've been building TickFlow on and off for a few months — a task and project management tool for student organizations. It started as a class project and turned into something I actually wanted to exist.
+
+Here's what I learned.
+
+## The problem worth solving
+
+Student orgs have a surprisingly bad time with project management. Notion is overkill. Trello is fine but disconnected from anything else. Most groups end up relying on group chats where tasks get lost instantly.
+
+TickFlow was supposed to fix that: a simple ticketing system, tied to your org, where you can assign tasks, track status, and see what's actually getting done.
+
+## Schema decisions I got wrong first
+
+The first version had tasks and projects as two separate top-level tables with no real relationship between them. Made querying a mess. The fix was obvious in retrospect: projects own tasks, orgs own projects. A simple hierarchy.
+
+```
+org → projects → tasks → comments
+```
+
+Getting the hierarchy right early matters a lot. Refactoring relationships after you've built the API surface is painful.
+
+## Auth tradeoffs
+
+I went with JWT over sessions — not because it's better for this case (it probably isn't), but because I wanted to understand it properly. Sessions with a server-side store would've been simpler and safer. JWT is fine if you're careful about expiry and rotation, but the "stateless" pitch is oversold when you still need a refresh token flow anyway.
+
+If I were starting over, I'd reach for a session-based approach by default and only deviate with a clear reason.
+
+## Simple beats clever
+
+The biggest lesson: the more I tried to make things elegant, the harder the code got to read. The API layer is a bunch of route handlers with direct DB queries. No fancy ORM abstractions, no query builders. Just SQL, typed with the schema.
+
+Boring to write. Easy to debug. Worth it.
+
+---
+
+TickFlow is still in progress. The core flow works — create an org, add members, create a project, file tickets, update them. The parts I want to add next: notifications, and a better dashboard view.

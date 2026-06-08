@@ -1,0 +1,55 @@
+At Swarthmore, we have an Nvidia RTX PRO 6000 Blackwell with 96GB of VRAM. That's a lot of compute for a college to have sitting around. I wanted to do something with it.
+
+SwatGPT started as a simple question: could I give the whole campus access to a powerful LLM that actually knows about Swarthmore? The public ChatGPT doesn't know our course catalog, our dining halls, or our campus-specific terminology. I wanted to fix that.
+
+## The model
+
+I landed on Qwen3-30B-A3B. It's a mixture-of-experts model — 30 billion total parameters, but only about 3 billion are active for any given forward pass. This makes it fast relative to a dense model of the same size, which matters when you're serving multiple users.
+
+The 96GB VRAM is generous enough that the model fits comfortably with room to spare for the KV cache. I ran it with llama.cpp first to get something working, then switched to vLLM for better throughput under concurrent load. vLLM's continuous batching is noticeably better when more than one person is using the thing at the same time — it batches requests across users instead of processing them serially.
+
+One thing I didn't appreciate before doing this: quantization matters more for latency than for quality at this scale. INT4 quantization cut memory usage significantly and barely touched output quality on the tasks I was testing. Q8 was somewhere in between and mostly unnecessary.
+
+## The RAG pipeline
+
+The whole point was to make the LLM know about Swarthmore. The base model is good at reasoning but knows nothing about our specific institution. RAG (retrieval-augmented generation) fixes this — you retrieve relevant documents at query time and inject them into the context window.
+
+**Scraping.** I wrote a crawler to index the `swarthmore.edu` domain — course pages, department sites, dining info, housing, club directories, research pages. The crawler respects `robots.txt` and rate-limits itself. After cleaning and deduplication, I ended up with a few hundred thousand document chunks.
+
+**Embedding.** I used a local embedding model — no API calls, everything runs on the same machine. The GPU makes this fast; embedding a corpus that size took a few hours total. Vectors go into Qdrant, which I ran in a Docker container alongside everything else.
+
+**Re-ranking.** Vector similarity search is a starting point, not an answer. The top-K nearest neighbors from Qdrant include a lot of semantically related documents that aren't actually useful for the specific question. A cross-encoder re-ranking model fixes this — it takes the question and each retrieved document together, scores how relevant they are to each other, and reorders. The jump in answer quality for specific factual questions is significant.
+
+The retrieval pipeline goes: query → embedding → Qdrant ANN search → re-rank → inject top-3 into prompt → generate.
+
+## Learning Docker
+
+This was my first real Docker project. I had used containers before but only as a user — pulling images, running them, not thinking much about it. Building this system meant containerizing five separate services: the vLLM server, Qdrant, the embedding service, the re-ranking service, and a small orchestration layer.
+
+Docker Compose makes the whole thing reproducible. One `docker compose up` and everything starts in the right order. I now understand why people are obsessive about this — when you're running five services with different dependencies and startup times, the alternative is genuinely painful.
+
+The thing I kept getting wrong: inter-container networking. When container A needs to talk to container B, you use the service name as the hostname, not `localhost`. `localhost` inside a container refers to that container, not the host or other containers. The Compose docs explain this but I had to learn it by breaking things first.
+
+I also had to learn about volume mounts for persisting the Qdrant vector index across container restarts. Without a persistent volume, you'd have to re-embed the entire corpus every time the container restarts.
+
+## The UI: LibreChat
+
+For the frontend, I forked LibreChat — an open-source ChatGPT-style interface that supports custom model endpoints. It's well-maintained, feature-complete, and saved me from building a chat UI from scratch.
+
+I stripped out the third-party provider integrations I didn't need, configured it to hit my local vLLM endpoint, and added Swarthmore branding. The fork is [SwatChat-v2](https://github.com/aidxhxr/SwatChat-v2). It's not polished, but it works — students can log in and ask questions about campus.
+
+The LibreChat codebase is large and not always obvious. I spent a while understanding how it handles conversation state and streaming responses before I felt comfortable making changes.
+
+## What I learned
+
+A few things that surprised me:
+
+**Latency compounds in pipelines.** Embedding → retrieval → re-ranking → generation adds up. Each step takes time, and users notice. I pre-computed embeddings for common queries and cached Qdrant results for frequently-asked questions to bring the median response time down.
+
+**Re-ranking is the highest-value addition.** If you're building RAG and skipping the re-ranking step, you're leaving a lot on the table. The embedding model gets you approximate semantic similarity; the re-ranker gets you relevance. They're different things.
+
+**The boring parts are the real work.** Scraping, cleaning data, containerizing services, handling errors in the pipeline — this is most of the engineering effort. The model is almost the easy part once you've figured out how to deploy it.
+
+---
+
+SwatGPT is still running. I want to improve the chunking strategy (the current approach is naive fixed-size chunking, which breaks badly at document boundaries) and add a feedback loop so I can see which answers are actually useful. But the core works, and watching people use it to find information that's genuinely hard to find otherwise is worth it.

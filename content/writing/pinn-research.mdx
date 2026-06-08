@@ -1,0 +1,71 @@
+This started as a final project for CS066 at Swarthmore and turned into a research obsession I've been working on all summer. I've been reading papers, implementing models in PyTorch, and running a lot of experiments on a 96GB VRAM GPU. Here's what I've learned.
+
+## What a PINN is
+
+A physics-informed neural network is a neural network that learns to satisfy physical laws, not just fit data. The idea is conceptually simple: instead of training purely on observed data, you encode physical constraints directly into the loss function.
+
+For a system governed by a partial differential equation (PDE), you evaluate the PDE residual at a set of "collocation points" — points scattered throughout the domain — and penalize the network for violating it at those locations. Combined with boundary and initial condition losses, the network learns a solution that's consistent with the physics.
+
+The interesting consequence: you can solve PDEs with far fewer data points than traditional numerical methods. You can also handle noisy and sparse observations naturally, because the physics acts as a strong regularizer on the solution space.
+
+## The Raissi paper
+
+The foundational work is Raissi, Perdikaris, and Karniadakis (2019) — *Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations.* This is the paper that gave the field its name and its framework.
+
+They solve both the forward problem (given a PDE and boundary conditions, find the solution) and the inverse problem (given noisy observations of the solution, infer unknown parameters of the PDE). The inverse problem is where it gets genuinely interesting — you can learn physical parameters from data, which is useful when those parameters are expensive or impossible to measure directly.
+
+The implementation uses automatic differentiation to compute PDE residuals. This is the key insight: PyTorch's autograd can differentiate the network output with respect to its inputs, giving you the spatial and temporal derivatives that appear in the PDE. You don't need to discretize anything; the network is your function approximator and autodiff gives you its derivatives for free.
+
+I implemented this from scratch. The training loop is not complicated once you understand what's happening — sample collocation points, compute residuals via autodiff, minimize the combined loss. The tricky part is loss weighting: the relative weight of the physics residual versus the boundary/data loss affects convergence significantly, and default equal weighting rarely works well.
+
+## DeepXDE
+
+After implementing things from scratch, I started using DeepXDE — a library by Lu Lu that abstracts the boilerplate. You specify your geometry, your PDE, your boundary conditions, and your collocation points, and DeepXDE handles the training loop and loss computation.
+
+It's useful for experimenting quickly. The library supports multiple backends (PyTorch, JAX, TensorFlow) and has implementations of several sampling strategies for collocation points, which saved me time. But I kept returning to from-scratch implementations when I needed to understand what was actually happening — DeepXDE hides enough that it's easy to get results without knowing why they're good or bad.
+
+Reading the DeepXDE source code was valuable separately from using it as a tool.
+
+## Stiff ODEs and Stiff-PINN
+
+One of the core failure modes for vanilla PINNs is stiff problems — systems where different components evolve on vastly different timescales. Chemical kinetics is a classic example: some reactions happen in microseconds, others in hours.
+
+Standard PINN training fails on stiff problems because the loss landscape becomes highly ill-conditioned. Gradients from the fast components dominate and the optimizer can't make useful progress on the slow ones.
+
+The Ji et al. Stiff-PINN paper addresses this with curriculum learning and adaptive time-stepping: start with short time windows where the problem isn't stiff, then gradually expand. The curriculum lets the network learn the fast dynamics first, then the slow ones.
+
+I implemented a simplified version of this for a stiff chemical system (a three-reaction ODE from combustion kinetics). The results are noticeably better than vanilla PINNs on the same problem. But training is more finicky — getting the curriculum schedule right is partially trial and error, and the hyperparameter sensitivity is higher than for non-stiff problems.
+
+## Systems biology
+
+The systems biology PINN paper (Yazdani et al.) applies the inverse problem framework to parameter inference in biological ODE systems: gene regulatory networks, metabolic pathways, protein interaction networks. You have some noisy time-series observations of state variables and you want to recover the rate parameters.
+
+The interesting part is that the physics structure — the ODE — constrains the solution space so strongly that you can recover good parameter estimates from very few observations. A purely data-driven approach would need far more data to get comparable results. The inductive bias from the physics is doing real work.
+
+I reproduced the main result from this paper on a smaller system (a simple enzyme kinetics model) and then started extending it to noisier observation regimes. The published results use clean synthetic data; I wanted to understand how the method degrades when the observations are messier.
+
+## Running on the GPU
+
+Most PINN problems are not GPU memory-bound — the networks are small, typically a few hundred to a few thousand parameters. The bottleneck is the optimizer. L-BFGS, which usually converges better than Adam for these problems, doesn't parallelize well on GPU. Adam is faster per step but needs many more steps.
+
+What the GPU helps with is running many experiments simultaneously. I can kick off a hyperparameter sweep — learning rate, network width, depth, sampling strategy, loss weighting scheme — and let them all run overnight. Waking up to 30 completed runs is qualitatively different from waiting a day per experiment.
+
+Some findings from the sweeps:
+
+**Adaptive loss weighting always helps.** Schemes that rebalance the physics residual and boundary losses based on gradient magnitudes during training (like the method from Wang et al., 2021) reliably outperform fixed weighting. The improvement is larger for problems with multiple competing loss terms.
+
+**Fourier feature embeddings help on problems with high spatial frequency.** Standard MLPs struggle to learn high-frequency solutions because of spectral bias — the network learns low-frequency components much faster. Encoding the inputs with random Fourier features before passing them to the network largely fixes this.
+
+**Collocation point sampling matters more than I expected.** Uniform random sampling of collocation points is a reasonable default but not optimal. Adaptive methods that concentrate points in regions of high residual error tend to converge faster, especially on problems with sharp features.
+
+## Where I'm going
+
+I'm trying to apply PINNs to a parameter inference problem in systems biology with realistic (messy) time-series data — irregular sampling intervals, missing observations, correlated noise. My hypothesis is that the standard approach degrades badly under these conditions and that some modifications (better noise models in the likelihood, adaptive collocation near observation times) help.
+
+The gap I keep running into: published results are almost always on clean synthetic data. Testing on real or realistic data is where the interesting open questions are.
+
+---
+
+Six months in, PINNs feel like a tool with a specific sweet spot: problems with known physics structure, limited or noisy data, and a need for interpretable solutions. Outside that sweet spot, purely numerical methods or purely data-driven approaches are often better. Learning where the edges of the sweet spot are has been more useful than any single implementation.
+
+If you're getting started, read Raissi first, then use DeepXDE to experiment, then implement the pieces you care about from scratch. The from-scratch implementation is where the understanding actually happens.
