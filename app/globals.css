@@ -1,26 +1,42 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode for next-themes */
+@variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --c-bg: #f9f9f9;
+  --c-text: #171717;
+  --c-muted: #737373;
+  --c-dim: #888888;
+  --c-sharp: #000000;
+  --c-border: #e4e4e7;
+}
+
+.dark {
+  --c-bg: #0a0a0a;
+  --c-text: #d4d4d4;
+  --c-muted: #737373;
+  --c-dim: #3a3a3a;
+  --c-sharp: #ffffff;
+  --c-border: #1c1c1c;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--c-bg);
+  --color-fg: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-dim: var(--c-dim);
+  --color-sharp: var(--c-sharp);
+  --color-border: var(--c-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
