@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { posts } from "@/lib/posts";
+import { projects } from "@/lib/projects";
 import { notFound } from "next/navigation";
 
 export const dynamicParams = false;
@@ -32,6 +33,7 @@ export default async function PostPage({
   const post = posts.find((p) => p.slug === slug);
   if (!post) notFound();
 
+  const project = projects.find((p) => p.slug === slug);
   const { default: Post } = await import(`@/content/writing/${slug}.mdx`);
 
   return (
@@ -48,13 +50,49 @@ export default async function PostPage({
         <h1 className="text-fg text-lg font-medium mb-2 leading-snug">
           {post.title}
         </h1>
-        <p className="text-xs font-mono text-dim">
+        <p className="text-xs font-mono text-dim mb-6">
           {new Date(post.date).toLocaleDateString("en-US", {
             year: "numeric",
             month: "long",
             day: "numeric",
           })}
         </p>
+        {project && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {project.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs font-mono text-dim border border-border px-2 py-0.5 rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-4 text-xs font-mono">
+              {project.github && (
+                <a
+                  href={project.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-dim hover:text-muted transition-colors"
+                >
+                  github ↗
+                </a>
+              )}
+              {project.demo && (
+                <a
+                  href={project.demo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-dim hover:text-muted transition-colors"
+                >
+                  demo ↗
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       <div
         className="
