@@ -5,7 +5,7 @@ export type Project = {
   slug?: string;
   demo?: string;
   image?: string;
-  year: number;
+  date: string;
   tags: string[];
 };
 
@@ -17,7 +17,7 @@ export const projects: Project[] = [
     github: "https://github.com/aidxhxr/SwatChat-v2",
     slug: "swatgpt",
     demo: "/",
-    year: 2026,
+    date: "Apr 2026",
     tags: ["Python", "Docker", "CUDA", "RAG", "vLLM"],
   },
   {
@@ -26,7 +26,7 @@ export const projects: Project[] = [
       "Six months of implementing physics-informed neural networks from scratch in PyTorch — reading Raissi, Lu, and Ji, running experiments on a 96GB GPU.",
     slug: "pinn-research",
     demo: "/",
-    year: 2026,
+    date: "Feb 2026",
     tags: ["Python", "PyTorch", "CUDA"],
   },
   {
@@ -35,7 +35,7 @@ export const projects: Project[] = [
       "Social platform built around intentional sharing. Five items a day, 24-hour expiry, group-based feeds — designed against engagement maximization.",
     slug: "breadcrumbs",
     demo: "/",
-    year: 2026,
+    date: "Dec 2025",
     tags: ["TypeScript", "Next.js", "Postgres"],
   },
   {
@@ -45,7 +45,7 @@ export const projects: Project[] = [
     github: "https://github.com/aidxhxr/tickflow",
     slug: "building-tickflow",
     demo: "/",
-    year: 2025,
+    date: "Oct 2025",
     tags: ["TypeScript", "Next.js", "Postgres"],
   },
 ];
