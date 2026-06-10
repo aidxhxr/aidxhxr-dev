@@ -3,6 +3,17 @@ import Link from "next/link";
 import { posts } from "@/lib/posts";
 import { projects } from "@/lib/projects";
 import { notFound } from "next/navigation";
+import Breadcrumbs from "@/content/writing/breadcrumbs.mdx";
+import BuildingTickflow from "@/content/writing/building-tickflow.mdx";
+import PinnResearch from "@/content/writing/pinn-research.mdx";
+import Swatgpt from "@/content/writing/swatgpt.mdx";
+
+const postComponents: Record<string, React.ComponentType> = {
+  breadcrumbs: Breadcrumbs,
+  "building-tickflow": BuildingTickflow,
+  "pinn-research": PinnResearch,
+  swatgpt: Swatgpt,
+};
 
 export const dynamicParams = false;
 
@@ -34,7 +45,8 @@ export default async function PostPage({
   if (!post) notFound();
 
   const project = projects.find((p) => p.slug === slug);
-  const { default: Post } = await import(`@/content/writing/${slug}.mdx`);
+  const Post = postComponents[slug];
+  if (!Post) notFound();
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-16">
