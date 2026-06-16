@@ -47,6 +47,7 @@ next-env.d.ts
 
 # Claude Code / agent files
 .agents/
+.claude/skills/site-design/SKILL.md
 skills-lock.json
 CLAUDE.md
 AGENTS.md
