@@ -5,12 +5,14 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --c-bg: #f9f9f9;
-  --c-text: #171717;
-  --c-muted: #737373;
-  --c-dim: #888888;
-  --c-sharp: #000000;
-  --c-border: #e4e4e7;
+  --c-bg: #f3eee3;
+  --c-text: #2b2620;
+  --c-muted: #6f675b;
+  --c-dim: #9b9079;
+  --c-sharp: #14110c;
+  --c-border: #e4ddcd;
+  --c-ascii: #c2622a;
+  --c-ascii-dim: #d8a36d;
 }
 
 .dark {
@@ -20,6 +22,8 @@
   --c-dim: #3a3a3a;
   --c-sharp: #ffffff;
   --c-border: #1c1c1c;
+  --c-ascii: #6f9fcf;
+  --c-ascii-dim: #2c3d52;
 }
 
 @theme inline {
@@ -29,6 +33,8 @@
   --color-dim: var(--c-dim);
   --color-sharp: var(--c-sharp);
   --color-border: var(--c-border);
+  --color-ascii: var(--c-ascii);
+  --color-ascii-dim: var(--c-ascii-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
