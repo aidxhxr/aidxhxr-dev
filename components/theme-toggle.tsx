@@ -14,9 +14,9 @@ export function ThemeToggle() {
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       className="text-sm font-mono text-dim hover:text-muted transition-colors"
-      aria-label="Toggle theme"
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
-      {theme === "dark" ? "light" : "dark"}
+      {theme === "dark" ? "#f3eee3" : "#0a0a0a"}
     </button>
   );
 }
