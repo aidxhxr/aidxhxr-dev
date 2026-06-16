@@ -16,7 +16,7 @@ const socials = [
 
 export default function Nav() {
   return (
-    <nav className="max-w-2xl mx-auto w-full px-6 pt-10 pb-2 flex items-center justify-between">
+    <nav className="max-w-[773px] mx-auto w-full px-6 pt-10 pb-2 flex items-center justify-between">
       <Link href="/" className="group font-mono text-sm transition-colors">
         <span className="text-fg group-hover:text-sharp transition-colors">amir</span>
         <span className="text-dim group-hover:text-sharp transition-colors">[khan]</span>

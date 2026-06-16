@@ -53,13 +53,15 @@ const experience = [
 
 export default function ExperiencePage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
-      <h1 className="text-xs font-mono text-dim uppercase tracking-widest mb-2">
-        experience
-      </h1>
-      <p className="text-xs text-dim mb-10">
-        learning real-world systems through internships, research, and fellowships
-      </p>
+    <div className="max-w-[773px] mx-auto px-6 py-16">
+      <header className="mb-14">
+        <h1 className="text-fg text-2xl font-medium tracking-tight mb-2">
+          experience
+        </h1>
+        <p className="text-sm text-muted leading-relaxed">
+          learning real-world systems through internships, research, and fellowships.
+        </p>
+      </header>
       <ul className="space-y-10">
         {experience.map((e, i) => (
           <li key={i} className="border-t border-border pt-8 first:border-t-0 first:pt-0">

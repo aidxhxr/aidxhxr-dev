@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { projects } from "@/lib/projects";
 
@@ -9,13 +8,15 @@ export const metadata: Metadata = {
 
 export default function ProjectsPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
-      <h1 className="text-xs font-mono text-dim uppercase tracking-widest mb-2">
-        projects
-      </h1>
-      <p className="text-xs text-dim mb-10">
-        things I&apos;ve built and written about
-      </p>
+    <div className="max-w-[773px] mx-auto px-6 py-16">
+      <header className="mb-14">
+        <h1 className="text-fg text-2xl font-medium tracking-tight mb-2">
+          projects
+        </h1>
+        <p className="text-sm text-muted leading-relaxed">
+          things I&apos;ve built and written about.
+        </p>
+      </header>
       <ul>
         {projects.map((p, i) => (
           <li key={p.name}>
@@ -24,25 +25,27 @@ export default function ProjectsPage() {
                 <div className="w-12 border-t border-border" />
               </div>
             )}
-            {p.image ? (
-              <div className="relative w-full aspect-video mb-4 rounded overflow-hidden border border-border">
-                <Image
-                  src={p.image}
-                  alt={p.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
+            {p.slug ? (
+              <Link href={`/writing/${p.slug}`} className="group block mb-3">
+                <div className="flex items-baseline justify-between gap-4 mb-2">
+                  <span className="text-base text-fg font-medium group-hover:text-sharp transition-colors">
+                    {p.name}
+                  </span>
+                  <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
+                </div>
+                <p className="text-sm text-muted leading-relaxed group-hover:text-fg transition-colors">
+                  {p.description}
+                </p>
+              </Link>
             ) : (
-              <div className="w-full aspect-video mb-4 rounded border border-border bg-border" />
+              <div className="mb-3">
+                <div className="flex items-baseline justify-between gap-4 mb-2">
+                  <span className="text-base text-fg font-medium">{p.name}</span>
+                  <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
+                </div>
+                <p className="text-sm text-muted leading-relaxed">{p.description}</p>
+              </div>
             )}
-            <div className="flex items-baseline justify-between gap-4 mb-2">
-              <span className="text-sm text-fg font-medium">{p.name}</span>
-              <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
-            </div>
-            <p className="text-sm text-muted leading-relaxed mb-3">
-              {p.description}
-            </p>
             <div className="flex flex-wrap gap-2 mb-3">
               {p.tags.map((tag) => (
                 <span
