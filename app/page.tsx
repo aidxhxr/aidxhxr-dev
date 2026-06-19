@@ -79,13 +79,29 @@ export default function Home() {
           <ul className="space-y-7">
             {recent.map((p) => (
               <li key={p.name}>
-                <div className="flex items-baseline justify-between gap-4 mb-1">
-                  <span className="text-sm text-fg">{p.name}</span>
-                  <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
-                </div>
-                <p className="text-sm text-muted leading-relaxed mb-2">
-                  {p.description}
-                </p>
+                {p.slug ? (
+                  <Link href={`/writing/${p.slug}`} className="group block mb-2">
+                    <div className="flex items-baseline justify-between gap-4 mb-1">
+                      <span className="text-sm text-fg group-hover:text-sharp transition-colors">
+                        {p.name}
+                      </span>
+                      <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
+                    </div>
+                    <p className="text-sm text-muted leading-relaxed group-hover:text-fg transition-colors">
+                      {p.description}
+                    </p>
+                  </Link>
+                ) : (
+                  <div className="mb-2">
+                    <div className="flex items-baseline justify-between gap-4 mb-1">
+                      <span className="text-sm text-fg">{p.name}</span>
+                      <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
+                    </div>
+                    <p className="text-sm text-muted leading-relaxed">
+                      {p.description}
+                    </p>
+                  </div>
+                )}
                 <div className="flex gap-4 text-xs font-mono">
                   {p.slug && (
                     <Link
