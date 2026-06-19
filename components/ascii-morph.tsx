@@ -107,7 +107,7 @@ export default function AsciiMorph() {
     <pre
       ref={ref}
       aria-hidden="true"
-      className="font-mono text-ascii-dim transition-colors select-none text-[6px] md:text-[7px] leading-[1em] tracking-[0]"
+      className="font-mono text-ascii-dim transition-colors select-none text-[5px] md:text-[6px] leading-[1em] tracking-[0]"
     />
   );
 }
