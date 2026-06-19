@@ -1,6 +1,11 @@
 export const ASCII_COLS = 96;
 export const ASCII_ROWS = 72;
 
+export const ASCII_QUOTES: string[] = [
+  'Icarus laughed as he fell',
+  'Destiny must be fulfilled',
+];
+
 export const ASCII_FRAMES: string[][] = [
   [
     '                                                                                                ',
