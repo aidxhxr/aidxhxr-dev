@@ -1,17 +1,17 @@
 # aidxhxr.dev
 
-personal website — writing, projects, about.
+This is my personal site — a quiet place to keep my writing, the projects I've built, and a short note about who I am. I mostly use it to document the things I work on so other people can take a look.
 
-built with Next.js 16, MDX, Tailwind CSS v4, dark/light theme via `next-themes`.
+It's built with Next.js 16 and MDX, styled with Tailwind CSS v4, and it ships a dark and a light theme that you can switch between (handled by `next-themes`).
 
-## structure
+## How it's laid out
 
 ```
 app/
   page.tsx          about (homepage)
   writing/          post list + [slug] MDX reader
   projects/         project list
-content/writing/    .mdx post files
+content/writing/    the .mdx post files
 lib/
   posts.ts          post metadata
   projects.ts       project metadata
@@ -19,14 +19,20 @@ components/
   nav.tsx
 ```
 
-## dev
+## Running it locally
+
+Install the dependencies and start the dev server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-## adding a post
+That's it — it'll be live at `localhost:3000`.
 
-1. add metadata to `lib/posts.ts`
-2. create `content/writing/<slug>.mdx`
+## Writing a new post
+
+When I want to add something to the writing section, it takes two steps:
+
+1. Add the post's metadata to `lib/posts.ts`.
+2. Create the matching `content/writing/<slug>.mdx` file and write the post.
