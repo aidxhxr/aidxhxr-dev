@@ -16,7 +16,7 @@ const experience = [
     ],
   },
   {
-    company: "swarthmore css",
+    company: "swarthmore college computer society (sccs)",
     role: "system admin & software engineer",
     period: "jan 2026 – present",
     location: "swarthmore, pa",
