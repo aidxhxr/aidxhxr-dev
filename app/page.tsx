@@ -20,7 +20,7 @@ export default function Home() {
           </section>
 
           <section className="space-y-2 text-sm">
-            <Row label="speaks" value="C++ · Python · TypeScript · Go" />
+            <Row label="speaks" value="C++ · Python · TypeScript · Go · Rust" />
             <Row label="digging" value="ML systems · LocalLLM · CUDA · distributed infra · SWE" />
             <Row
               label="email"
