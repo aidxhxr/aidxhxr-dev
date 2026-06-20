@@ -7,7 +7,7 @@ export const ASCII_QUOTES: string[] = [
   'Local minima are rare in high-dimensional spaces.',
 ];
 
-export const ASCII_FRAMES: string[
+export const ASCII_FRAMES: string[][] = [
   [
     '                                                                                                ',
     '                                                                                                ',
