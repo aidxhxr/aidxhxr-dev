@@ -45,7 +45,7 @@ const experience = [
     location: "remote",
     bullets: [
       "selected for a competitive fellowship (sub-8% acceptance) preparing students for careers across tech, finance, and consulting",
-      "improved how HeadStart manages its network by building a graph CRUD system with Go, gRPC, Neo4j, and a React/TypeScript frontend",
+      "improved how HeadStart manages its network by building a graph CRUD system with Go, gRPC, Neo4j, and a TypeScript frontend",
       "sharpened financial-analysis and professional skills through mentorship and direct engagement with corporate partners including Sixth Street",
     ],
   },
