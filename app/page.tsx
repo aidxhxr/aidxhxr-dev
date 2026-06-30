@@ -27,7 +27,7 @@ export default function Home() {
               value={
                 <a
                   href="mailto:aaidark1@swarthmore.edu"
-                  className="text-muted hover:text-fg transition-colors"
+                  className="text-muted hover:text-fg transition-colors link-underline"
                 >
                   aaidark1@swarthmore.edu
                 </a>
@@ -41,7 +41,7 @@ export default function Home() {
                     href="https://github.com/aidxhxr"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted hover:text-fg transition-colors"
+                    className="text-muted hover:text-fg transition-colors link-underline"
                   >
                     aidxhxr ↗
                   </a>
@@ -56,7 +56,7 @@ export default function Home() {
                     href="https://www.linkedin.com/in/amirkhan-aidarkhan-53b926347"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted hover:text-fg transition-colors"
+                    className="text-muted hover:text-fg transition-colors link-underline"
                   >
                     amirkhan-aidarkhan ↗
                   </a>
@@ -82,7 +82,7 @@ export default function Home() {
                 {p.slug ? (
                   <Link href={`/writing/${p.slug}`} className="group block mb-2">
                     <div className="flex items-baseline justify-between gap-4 mb-1">
-                      <span className="text-sm text-fg group-hover:text-sharp transition-colors">
+                      <span className="text-sm text-fg group-hover:text-sharp transition-colors link-underline-group">
                         {p.name}
                       </span>
                       <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
@@ -106,7 +106,7 @@ export default function Home() {
                   {p.slug && (
                     <Link
                       href={`/writing/${p.slug}`}
-                      className="text-dim hover:text-muted transition-colors"
+                      className="text-dim hover:text-muted transition-colors link-underline"
                     >
                       write-up ↗
                     </Link>
@@ -116,7 +116,7 @@ export default function Home() {
                       href={p.github}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-dim hover:text-muted transition-colors"
+                      className="text-dim hover:text-muted transition-colors link-underline"
                     >
                       github ↗
                     </a>
@@ -126,7 +126,7 @@ export default function Home() {
                       href={p.demo}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-dim hover:text-muted transition-colors"
+                      className="text-dim hover:text-muted transition-colors link-underline"
                     >
                       demo ↗
                     </a>
@@ -138,7 +138,7 @@ export default function Home() {
           <div className="mt-6">
             <Link
               href="/projects"
-              className="text-xs font-mono text-dim hover:text-muted transition-colors"
+              className="text-xs font-mono text-dim hover:text-muted transition-colors link-underline"
             >
               all projects →
             </Link>
