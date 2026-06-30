@@ -28,7 +28,7 @@ export default function ProjectsPage() {
             {p.slug ? (
               <Link href={`/writing/${p.slug}`} className="group block mb-3">
                 <div className="flex items-baseline justify-between gap-4 mb-2">
-                  <span className="text-base text-fg font-medium group-hover:text-sharp transition-colors">
+                  <span className="text-base text-fg font-medium group-hover:text-sharp transition-colors link-underline-group">
                     {p.name}
                   </span>
                   <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
@@ -61,7 +61,7 @@ export default function ProjectsPage() {
                 {p.slug && (
                   <Link
                     href={`/writing/${p.slug}`}
-                    className="text-dim hover:text-muted transition-colors"
+                    className="text-dim hover:text-muted transition-colors link-underline"
                   >
                     write-up ↗
                   </Link>
@@ -71,7 +71,7 @@ export default function ProjectsPage() {
                     href={p.github}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-dim hover:text-muted transition-colors"
+                    className="text-dim hover:text-muted transition-colors link-underline"
                   >
                     github ↗
                   </a>
@@ -81,7 +81,7 @@ export default function ProjectsPage() {
                     href={p.demo}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-dim hover:text-muted transition-colors"
+                    className="text-dim hover:text-muted transition-colors link-underline"
                   >
                     demo ↗
                   </a>
