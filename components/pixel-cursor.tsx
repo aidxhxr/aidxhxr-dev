@@ -58,18 +58,22 @@ export default function PixelCursor() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!fine || reduce) return;
 
-    const root = getComputedStyle(document.documentElement);
-    const fill = root.getPropertyValue("--c-ascii").trim();
-    const outline = root.getPropertyValue("--c-sharp").trim();
-    const uri = cursorUri(fill, outline);
+    const raf = requestAnimationFrame(() => {
+      const root = getComputedStyle(document.documentElement);
+      const fill = root.getPropertyValue("--c-ascii").trim();
+      const outline = root.getPropertyValue("--c-sharp").trim();
+      const uri = cursorUri(fill, outline);
 
-    let el = document.getElementById("pixel-cursor-style") as HTMLStyleElement | null;
-    if (!el) {
-      el = document.createElement("style");
-      el.id = "pixel-cursor-style";
-      document.head.appendChild(el);
-    }
-    el.textContent = `*,*::before,*::after{cursor:url("${uri}") 0 0,auto!important}`;
+      let el = document.getElementById("pixel-cursor-style") as HTMLStyleElement | null;
+      if (!el) {
+        el = document.createElement("style");
+        el.id = "pixel-cursor-style";
+        document.head.appendChild(el);
+      }
+      el.textContent = `*,*::before,*::after{cursor:url("${uri}") 0 0,auto!important}`;
+    });
+
+    return () => cancelAnimationFrame(raf);
   }, [resolvedTheme]);
 
   return null;
