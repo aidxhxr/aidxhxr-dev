@@ -26,7 +26,7 @@ export default function Nav() {
           <Link
             key={l.href}
             href={l.href}
-            className="text-sm text-muted hover:text-fg transition-colors"
+            className="text-sm text-muted hover:text-fg transition-colors link-underline"
           >
             {l.label}
           </Link>
@@ -37,7 +37,7 @@ export default function Nav() {
             href={s.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:block text-sm text-muted hover:text-fg transition-colors"
+            className="hidden sm:block text-sm text-muted hover:text-fg transition-colors link-underline"
           >
             {s.label}
           </a>
