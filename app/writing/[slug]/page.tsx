@@ -53,7 +53,7 @@ export default async function PostPage({
       <div className="mb-10">
         <Link
           href="/projects"
-          className="text-xs font-mono text-dim hover:text-muted transition-colors"
+          className="text-xs font-mono text-dim hover:text-muted transition-colors link-underline"
         >
           ← projects
         </Link>
@@ -87,7 +87,7 @@ export default async function PostPage({
                   href={project.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-dim hover:text-muted transition-colors"
+                  className="text-dim hover:text-muted transition-colors link-underline"
                 >
                   github ↗
                 </a>
@@ -97,7 +97,7 @@ export default async function PostPage({
                   href={project.demo}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-dim hover:text-muted transition-colors"
+                  className="text-dim hover:text-muted transition-colors link-underline"
                 >
                   demo ↗
                 </a>
