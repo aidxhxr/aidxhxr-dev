@@ -11,6 +11,7 @@ app/
   page.tsx          about (homepage)
   writing/          post list + [slug] MDX reader
   projects/         project list
+  experience/       experience timeline
 content/writing/    the .mdx post files
 lib/
   posts.ts          post metadata
