@@ -6,7 +6,7 @@ export default function Home() {
   const recent = projects.slice(0, 3);
 
   return (
-    <div className="max-w-[773px] mx-auto px-6 py-16 space-y-14">
+    <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16 space-y-14">
       <div className="flex flex-col md:flex-row md:items-center gap-14 md:gap-10">
         <div className="space-y-14 md:flex-1 min-w-0">
           <section>

@@ -49,7 +49,7 @@ export default async function PostPage({
   if (!Post) notFound();
 
   return (
-    <div className="max-w-[773px] mx-auto px-6 py-16">
+    <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16">
       <div className="mb-10">
         <Link
           href="/projects"
