@@ -21,7 +21,7 @@ export default function Nav() {
         <span className="text-fg group-hover:text-sharp transition-colors">amir</span>
         <span className="text-dim group-hover:text-sharp transition-colors">[khan]</span>
       </Link>
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4 sm:gap-6">
         {links.map((l) => (
           <Link
             key={l.href}
