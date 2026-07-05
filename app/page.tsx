@@ -21,7 +21,7 @@ export default function Home() {
 
           <section className="space-y-2 text-sm">
             <Row label="speaks" value="C++ · Python · TypeScript · Go · Rust" />
-            <Row label="digging" value="ML systems · LocalLLM · CUDA · distributed infra · SWE" />
+            <Row label="digging" value="alignment · evals · ML systems · distributed compute · SWE · CUDA" />
             <Row
               label="email"
               value={
