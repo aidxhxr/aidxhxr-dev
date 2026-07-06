@@ -170,7 +170,13 @@ export default function SandText() {
         const q = s.queues.get(x)!;
         const ty = q.shift()!;
         if (!q.length) colsWithWork.splice(ci, 1);
-        s.grains.push({ x, y: -1 - Math.random() * s.rows * 0.6, v: 0.3 + Math.random() * 0.4, ty });
+        const up = s.phrase % 2 === 1;
+        s.grains.push({
+          x,
+          y: up ? s.rows + 1 + Math.random() * s.rows * 0.6 : -1 - Math.random() * s.rows * 0.6,
+          v: 0.3 + Math.random() * 0.4,
+          ty,
+        });
       }
     };
 
@@ -220,11 +226,12 @@ export default function SandText() {
           s.pending.splice(i, 1);
         }
         spawn(s, s.phase === "pour" ? 14 : 4);
+        const up = s.phrase % 2 === 1;
         for (let i = s.grains.length - 1; i >= 0; i--) {
           const g = s.grains[i];
           g.v = Math.min(1.6, g.v + 0.06);
-          g.y += g.v;
-          if (g.y >= g.ty) {
+          g.y += up ? -g.v : g.v;
+          if (up ? g.y <= g.ty : g.y >= g.ty) {
             const idx = g.ty * s.cols + g.x;
             if (s.filled[idx] < 0) {
               s.filled[idx] = (Math.random() * paletteRef.current.length) | 0;
@@ -347,8 +354,16 @@ export default function SandText() {
       }
     };
 
+    let lastTick = 0;
     const tick = (now: number) => {
       if (sim) {
+        if (lastTick && now - lastTick > 400) {
+          const gap = now - lastTick;
+          sim.holdUntil += gap;
+          sim.windStart += gap;
+          for (const w of sim.pending) w.at += gap;
+        }
+        lastTick = now;
         step(sim, now);
         draw(sim, now);
       }
