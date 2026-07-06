@@ -9,7 +9,7 @@ export default function Home() {
     <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16 space-y-14">
       <div className="flex flex-col md:flex-row md:items-center gap-14 md:gap-10">
         <div className="space-y-14 md:flex-1 min-w-0">
-          <section>
+          <section className="rise">
             <h1 className="text-fg text-lg font-medium mb-3">
               Amirkhan Aidarkhan
             </h1>
@@ -19,7 +19,7 @@ export default function Home() {
             </p>
           </section>
 
-          <section className="space-y-2 text-sm">
+          <section className="rise space-y-2 text-sm" style={{ animationDelay: "140ms" }}>
             <Row label="speaks" value="C++ · Python · TypeScript · Go · Rust" />
             <Row label="digging" value="alignment · evals · ML systems · distributed compute · SWE · CUDA" />
             <Row
@@ -72,7 +72,7 @@ export default function Home() {
       </div>
 
       {recent.length > 0 && (
-        <section>
+        <section className="rise" style={{ animationDelay: "280ms" }}>
           <p className="text-xs font-mono text-dim mb-5 uppercase tracking-widest">
             projects
           </p>
