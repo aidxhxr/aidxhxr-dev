@@ -13,6 +13,7 @@
   --c-border: #e4ddcd;
   --c-ascii: #c2622a;
   --c-ascii-dim: #d8a36d;
+  --c-ascii-hot: #5f2607;
 }
 
 .dark {
@@ -24,6 +25,7 @@
   --c-border: #1c1c1c;
   --c-ascii: #6f9fcf;
   --c-ascii-dim: #2c3d52;
+  --c-ascii-hot: #eaf4ff;
 }
 
 @theme inline {
@@ -35,6 +37,7 @@
   --color-border: var(--c-border);
   --color-ascii: var(--c-ascii);
   --color-ascii-dim: var(--c-ascii-dim);
+  --color-ascii-hot: var(--c-ascii-hot);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
