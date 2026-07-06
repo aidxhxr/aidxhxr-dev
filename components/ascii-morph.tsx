@@ -4,9 +4,9 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 import { ASCII_COLS, ASCII_ROWS, ASCII_FRAMES, ASCII_QUOTES } from "@/lib/ascii-frames";
 
-const CELL_W = 4;
-const CELL_H = 6;
-const FONT_SIZE = 6.4;
+const CELL_W = 3;
+const CELL_H = 4.5;
+const FONT_SIZE = 4.8;
 const LEVELS = 16;
 const SEG_CHAOS = 650;
 const SEG_RESOLVE = 950;
@@ -276,7 +276,7 @@ export default function AsciiMorph() {
           aspectRatio: `${ASCII_COLS * CELL_W} / ${ASCII_ROWS * CELL_H}`,
         }}
       />
-      <div className="min-h-10 w-full max-w-96 self-center md:self-start">
+      <div className="min-h-10 w-full max-w-72 self-center md:self-start">
         <blockquote
           ref={quoteRef}
           style={{
