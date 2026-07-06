@@ -18,16 +18,16 @@ const socials = [
 export default function Nav() {
   return (
     <nav className="max-w-[773px] mx-auto w-full px-6 pt-10 pb-2 flex items-center justify-between">
-      <Link href="/" className="group font-mono text-sm transition-colors">
+      <Link href="/" className="group font-mono text-[13px] sm:text-sm transition-colors">
         <span className="text-fg group-hover:text-sharp transition-colors">amir</span>
         <span className="text-dim group-hover:text-sharp transition-colors">[khan]</span>
       </Link>
-      <div className="flex items-center gap-4 sm:gap-6">
+      <div className="flex items-center gap-3 sm:gap-6">
         {links.map((l) => (
           <Link
             key={l.href}
             href={l.href}
-            className="text-sm text-muted hover:text-fg transition-colors link-underline"
+            className="text-[13px] sm:text-sm text-muted hover:text-fg transition-colors link-underline"
           >
             {l.label}
           </Link>

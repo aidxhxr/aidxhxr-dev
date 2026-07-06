@@ -13,7 +13,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="text-sm font-mono text-dim hover:text-muted transition-colors"
+      className="text-[13px] sm:text-sm font-mono text-dim hover:text-muted transition-colors"
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
       {theme === "dark" ? "#f3eee3" : "#0a0a0a"}
