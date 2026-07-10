@@ -196,6 +196,7 @@ export default function AsciiMorph() {
       const frame = ASCII_FRAMES[fi];
       const bucket = (now / 55) | 0;
       const lamp = ptr.a > 0.01;
+      const wt = now * 0.0011;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let i = 0;
       for (let y = 0; y < ASCII_ROWS; y++) {
@@ -212,11 +213,11 @@ export default function AsciiMorph() {
           if (locked) {
             glyph = row[x] ?? " ";
             if (glyph === " ") continue;
-            b = BASE;
+            b = BASE + 0.06 * Math.sin(wt + x * 0.16 + y * 0.24 + rnd[i] * 2);
             if (seg === "resolve") {
               const age = (p - ranks[i]) * SEG_RESOLVE;
               const glow = Math.max(0, 1 - age / 450);
-              b = BASE + (1 - BASE) * glow * glow;
+              b += (1 - BASE) * glow * glow;
             }
           } else {
             glyph = CHAOS[(i * 31 + bucket * 101 + ((rnd[i] * 89) | 0)) % CHAOS.length];
