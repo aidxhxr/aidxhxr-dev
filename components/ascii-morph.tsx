@@ -8,10 +8,10 @@ const CELL_W = 3;
 const CELL_H = 4.5;
 const FONT_SIZE = 4.8;
 const LEVELS = 16;
-const SEG_CHAOS = 650;
-const SEG_RESOLVE = 950;
-const SEG_HOLD = 3600;
-const SEG_DISSOLVE = 750;
+const SEG_CHAOS = 450;
+const SEG_RESOLVE = 1300;
+const SEG_HOLD = 3200;
+const SEG_DISSOLVE = 1100;
 const SEG_TOTAL = SEG_CHAOS + SEG_RESOLVE + SEG_HOLD + SEG_DISSOLVE;
 const BASE = 0.55;
 const DIM = 0.3;
@@ -236,7 +236,7 @@ export default function AsciiMorph() {
         }
       }
 
-      const wantQuote = seg === "hold" || (seg === "resolve" && p > 0.65);
+      const wantQuote = seg === "hold" || (seg === "resolve" && p > 0.55);
       if (wantQuote !== quoteOn) {
         quoteOn = wantQuote;
         showQuote(fi, wantQuote);
