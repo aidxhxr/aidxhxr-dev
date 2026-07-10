@@ -17,6 +17,7 @@ const BASE = 0.55;
 const DIM = 0.3;
 const CHAOS = "@#%*+=~-:.oxiltf/\\|()<>";
 const N = ASCII_COLS * ASCII_ROWS;
+const ASPECT = (ASCII_COLS * CELL_W) / (ASCII_ROWS * CELL_H);
 
 const GLYPHS = (() => {
   const s = new Set<string>(CHAOS);
@@ -50,28 +51,31 @@ function buildRamp(dim: string, lit: string, hot: string) {
   return ramp;
 }
 
-function buildAtlas(ramp: string[], font: string, dpr: number) {
+function buildAtlas(ramp: string[], font: string, px: number) {
   const c = document.createElement("canvas");
-  c.width = GLYPHS.length * CELL_W * dpr;
-  c.height = LEVELS * CELL_H * dpr;
+  c.width = Math.max(1, Math.ceil(GLYPHS.length * CELL_W * px));
+  c.height = Math.max(1, Math.ceil(LEVELS * CELL_H * px));
   const g = c.getContext("2d")!;
-  g.font = `${FONT_SIZE * dpr}px ${font}`;
+  g.font = `${FONT_SIZE * px}px ${font}`;
   g.textAlign = "center";
   g.textBaseline = "middle";
   for (let l = 0; l < LEVELS; l++) {
     g.fillStyle = ramp[l];
     for (let i = 0; i < GLYPHS.length; i++) {
-      g.fillText(GLYPHS[i], (i + 0.5) * CELL_W * dpr, (l + 0.55) * CELL_H * dpr);
+      g.fillText(GLYPHS[i], (i + 0.5) * CELL_W * px, (l + 0.55) * CELL_H * px);
     }
   }
   return c;
 }
 
 export default function AsciiMorph() {
+  const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const quoteRef = useRef<HTMLQuoteElement>(null);
   const atlasRef = useRef<HTMLCanvasElement | null>(null);
   const staticDrawRef = useRef<(() => void) | null>(null);
+  const buildRef = useRef<(() => void) | null>(null);
+  const scaleRef = useRef(1);
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
@@ -84,29 +88,49 @@ export default function AsciiMorph() {
       const font =
         root.getPropertyValue("--font-geist-mono").trim() || "monospace";
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      atlasRef.current = buildAtlas(buildRamp(dim, lit, hot), font, dpr);
+      atlasRef.current = buildAtlas(
+        buildRamp(dim, lit, hot),
+        font,
+        dpr * scaleRef.current
+      );
       staticDrawRef.current?.();
     };
+    buildRef.current = build;
     build();
     document.fonts?.ready.then(() => {
       if (!cancelled) build();
     });
     return () => {
       cancelled = true;
+      buildRef.current = null;
     };
   }, [resolvedTheme]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const quote = quoteRef.current;
-    if (!canvas || !quote) return;
+    const box = boxRef.current;
+    if (!canvas || !quote || !box) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = ASCII_COLS * CELL_W * dpr;
-    canvas.height = ASCII_ROWS * CELL_H * dpr;
     const ctx = canvas.getContext("2d")!;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const cw = CELL_W * dpr;
-    const ch = CELL_H * dpr;
+    let cw = 0;
+    let ch = 0;
+
+    const fit = () => {
+      const r = box.getBoundingClientRect();
+      const availH = r.height || Infinity;
+      const w = Math.max(32, Math.min(r.width, availH * ASPECT));
+      const h = w / ASPECT;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      cw = canvas.width / ASCII_COLS;
+      ch = canvas.height / ASCII_ROWS;
+      scaleRef.current = w / (ASCII_COLS * CELL_W);
+      buildRef.current?.();
+    };
 
     const blit = (x: number, y: number, glyph: string, b: number) => {
       const gi = GLYPH_INDEX.get(glyph);
@@ -138,12 +162,19 @@ export default function AsciiMorph() {
         }
       };
       staticDrawRef.current = drawStatic;
-      drawStatic();
+      fit();
+      const ro = new ResizeObserver(fit);
+      ro.observe(box);
       showQuote(0, true);
       return () => {
         staticDrawRef.current = null;
+        ro.disconnect();
       };
     }
+
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
 
     const rnd = new Float32Array(N);
     for (let i = 0; i < N; i++) rnd[i] = Math.random();
@@ -259,25 +290,25 @@ export default function AsciiMorph() {
 
     return () => {
       cancelAnimationFrame(raf);
+      ro.disconnect();
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
     };
   }, []);
 
   return (
-    <div className="flex flex-col items-center md:items-start gap-4">
-      <canvas
-        ref={canvasRef}
-        aria-hidden="true"
-        className="block select-none touch-none"
-        style={{
-          width: ASCII_COLS * CELL_W,
-          maxWidth: "100%",
-          height: "auto",
-          aspectRatio: `${ASCII_COLS * CELL_W} / ${ASCII_ROWS * CELL_H}`,
-        }}
-      />
-      <div className="min-h-10 w-full max-w-72 self-center md:self-start">
+    <div className="flex min-h-0 flex-1 flex-col items-center gap-4 md:flex-none md:items-start">
+      <div
+        ref={boxRef}
+        className="flex min-h-0 w-full flex-1 items-center justify-center md:h-[432px] md:w-[384px] md:flex-none md:items-start md:justify-start"
+      >
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          className="block select-none"
+        />
+      </div>
+      <div className="min-h-10 w-full max-w-72 self-center md:max-w-[384px] md:self-start">
         <blockquote
           ref={quoteRef}
           style={{
