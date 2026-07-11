@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 import { ASCII_COLS, ASCII_ROWS, ASCII_FRAMES, ASCII_QUOTES } from "@/lib/ascii-frames";
+import { renderTextFrame } from "@/lib/ascii-text";
 
 const CELL_W = 3;
 const CELL_H = 4.5;
@@ -12,17 +13,37 @@ const SEG_CHAOS = 450;
 const SEG_RESOLVE = 1300;
 const SEG_HOLD = 3200;
 const SEG_DISSOLVE = 1100;
-const SEG_TOTAL = SEG_CHAOS + SEG_RESOLVE + SEG_HOLD + SEG_DISSOLVE;
 const BASE = 0.55;
 const DIM = 0.3;
 const CHAOS = "@#%*+=~-:.oxiltf/\\|()<>";
-const N = ASCII_COLS * ASCII_ROWS;
-const ASPECT = (ASCII_COLS * CELL_W) / (ASCII_ROWS * CELL_H);
+const QUOTE_GAP = 3;
+const QUOTE_ROWS = 13;
+const ROWS = ASCII_ROWS + QUOTE_GAP + QUOTE_ROWS;
+const N = ASCII_COLS * ROWS;
+const ASPECT = (ASCII_COLS * CELL_W) / (ROWS * CELL_H);
 const H_MAX = Math.log2(CHAOS.length);
+
+const SEQUENCE = ASCII_FRAMES.map((art, i) => {
+  const q = ASCII_QUOTES[i];
+  const frame = [
+    ...art,
+    ...Array.from({ length: ASCII_ROWS - art.length + QUOTE_GAP }, () => ""),
+    ...(q
+      ? renderTextFrame(q, ASCII_COLS, QUOTE_ROWS)
+      : Array.from({ length: QUOTE_ROWS }, () => "")),
+  ];
+  return { frame, hold: q ? Math.max(SEG_HOLD, q.length * 90) : SEG_HOLD };
+});
+
+const OFFSETS = SEQUENCE.reduce<number[]>(
+  (a, s) => (a.push(a[a.length - 1] + SEG_CHAOS + SEG_RESOLVE + s.hold + SEG_DISSOLVE), a),
+  [0]
+);
+const CYCLE_MS = OFFSETS[OFFSETS.length - 1];
 
 const GLYPHS = (() => {
   const s = new Set<string>(CHAOS);
-  for (const frame of ASCII_FRAMES)
+  for (const { frame } of SEQUENCE)
     for (const row of frame) for (const ch of row) s.add(ch);
   s.delete(" ");
   return [...s].join("");
@@ -42,9 +63,9 @@ function histEntropy(counts: ArrayLike<number>) {
   return h;
 }
 
-const H_TARGET = ASCII_FRAMES.map((frame) => {
+const H_TARGET = SEQUENCE.map(({ frame }) => {
   const counts = new Float64Array(GLYPHS.length + 1);
-  for (let y = 0; y < ASCII_ROWS; y++) {
+  for (let y = 0; y < ROWS; y++) {
     const row = frame[y];
     for (let x = 0; x < ASCII_COLS; x++) {
       counts[GLYPH_INDEX.get(row[x] ?? " ") ?? SPACE_IDX]++;
@@ -95,7 +116,6 @@ function buildAtlas(ramp: string[], font: string, px: number) {
 export default function AsciiMorph() {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const quoteRef = useRef<HTMLQuoteElement>(null);
   const bitsRef = useRef<HTMLSpanElement>(null);
   const atlasRef = useRef<HTMLCanvasElement | null>(null);
   const staticDrawRef = useRef<(() => void) | null>(null);
@@ -133,10 +153,9 @@ export default function AsciiMorph() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const quote = quoteRef.current;
     const box = boxRef.current;
     const bits = bitsRef.current;
-    if (!canvas || !quote || !box || !bits) return;
+    if (!canvas || !box || !bits) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const ctx = canvas.getContext("2d")!;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -153,7 +172,7 @@ export default function AsciiMorph() {
       canvas.width = Math.max(1, Math.round(w * dpr));
       canvas.height = Math.max(1, Math.round(h * dpr));
       cw = canvas.width / ASCII_COLS;
-      ch = canvas.height / ASCII_ROWS;
+      ch = canvas.height / ROWS;
       scaleRef.current = w / (ASCII_COLS * CELL_W);
       buildRef.current?.();
     };
@@ -165,21 +184,12 @@ export default function AsciiMorph() {
       ctx.drawImage(atlasRef.current!, gi * cw, level * ch, cw, ch, x * cw, y * ch, cw, ch);
     };
 
-    const showQuote = (frame: number, on: boolean) => {
-      if (on) quote.textContent = ASCII_QUOTES[frame] ?? "";
-      quote.style.opacity = on ? "1" : "0";
-      quote.style.transform = on
-        ? "translateY(0) scaleY(1)"
-        : "translateY(-3px) scaleY(0.55)";
-      quote.style.filter = on ? "blur(0)" : "blur(1.5px)";
-    };
-
     if (reduce) {
       const drawStatic = () => {
         if (!atlasRef.current) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const frame = ASCII_FRAMES[0];
-        for (let y = 0; y < ASCII_ROWS; y++) {
+        const frame = SEQUENCE[0].frame;
+        for (let y = 0; y < ROWS; y++) {
           const row = frame[y];
           for (let x = 0; x < ASCII_COLS; x++) {
             const g = row[x] ?? " ";
@@ -192,7 +202,6 @@ export default function AsciiMorph() {
       const ro = new ResizeObserver(fit);
       ro.observe(box);
       bits.textContent = "0.000";
-      showQuote(0, true);
       return () => {
         staticDrawRef.current = null;
         ro.disconnect();
@@ -212,7 +221,7 @@ export default function AsciiMorph() {
     };
 
     const ptr = { x: 0, y: 0, tx: 0, ty: 0, a: 0, ta: 0 };
-    let quoteOn = false;
+    const glyphCounts = new Int32Array(GLYPHS.length + 1);
     let raf = 0;
     let meterBucket = -1;
     const start = performance.now();
@@ -225,9 +234,16 @@ export default function AsciiMorph() {
       ptr.y += (ptr.ty - ptr.y) * 0.18;
       ptr.a += (ptr.ta - ptr.a) * 0.08;
 
-      const t = (now - start) % (SEG_TOTAL * ASCII_FRAMES.length);
-      const fi = (t / SEG_TOTAL) | 0;
-      let tt = t - fi * SEG_TOTAL;
+      const t = (now - start) % CYCLE_MS;
+      let fi = SEQUENCE.length - 1;
+      for (let k = 1; k < OFFSETS.length; k++) {
+        if (t < OFFSETS[k]) {
+          fi = k - 1;
+          break;
+        }
+      }
+      let tt = t - OFFSETS[fi];
+      const hold = SEQUENCE[fi].hold;
       let seg: "chaos" | "resolve" | "hold" | "dissolve";
       let p: number;
       if (tt < SEG_CHAOS) {
@@ -236,12 +252,12 @@ export default function AsciiMorph() {
       } else if ((tt -= SEG_CHAOS) < SEG_RESOLVE) {
         seg = "resolve";
         p = tt / SEG_RESOLVE;
-      } else if ((tt -= SEG_RESOLVE) < SEG_HOLD) {
+      } else if ((tt -= SEG_RESOLVE) < hold) {
         seg = "hold";
-        p = tt / SEG_HOLD;
+        p = tt / hold;
       } else {
         seg = "dissolve";
-        p = (tt - SEG_HOLD) / SEG_DISSOLVE;
+        p = (tt - hold) / SEG_DISSOLVE;
       }
 
       if (seg === "resolve" || seg === "dissolve") {
@@ -252,17 +268,17 @@ export default function AsciiMorph() {
         }
       }
 
-      const frame = ASCII_FRAMES[fi];
+      const frame = SEQUENCE[fi].frame;
       const bucket = (now / 55) | 0;
       const lamp = ptr.a > 0.01;
       const wt = now * 0.0011;
       let amp = 0.06;
       if (seg === "hold")
         amp = 0.06 * (1 - Math.min(1, p / 0.1, (1 - p) / 0.1));
-      let unlockedN = 0;
+      glyphCounts.fill(0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let i = 0;
-      for (let y = 0; y < ASCII_ROWS; y++) {
+      for (let y = 0; y < ROWS; y++) {
         const row = frame[y];
         for (let x = 0; x < ASCII_COLS; x++, i++) {
           let locked: boolean;
@@ -275,7 +291,10 @@ export default function AsciiMorph() {
           let glyph: string;
           if (locked) {
             glyph = row[x] ?? " ";
-            if (glyph === " ") continue;
+            if (glyph === " ") {
+              glyphCounts[SPACE_IDX]++;
+              continue;
+            }
             b = BASE + amp * Math.sin(wt + x * 0.16 + y * 0.24 + rnd[i] * 2);
             if (seg === "resolve") {
               const age = (p - ranks[i]) * SEG_RESOLVE;
@@ -283,7 +302,6 @@ export default function AsciiMorph() {
               b += (1 - BASE) * glow * glow;
             }
           } else {
-            unlockedN++;
             glyph = CHAOS[(i * 31 + bucket * 101 + ((rnd[i] * 89) | 0)) % CHAOS.length];
             b = DIM;
             if (seg === "dissolve") {
@@ -292,6 +310,7 @@ export default function AsciiMorph() {
               b = DIM + (1 - DIM) * glow * glow;
             }
           }
+          glyphCounts[GLYPH_INDEX.get(glyph) ?? SPACE_IDX]++;
           if (lamp) {
             const dx = x - ptr.x;
             const dy = (y - ptr.y) * 1.5;
@@ -304,14 +323,8 @@ export default function AsciiMorph() {
       const mb = (now / 90) | 0;
       if (mb !== meterBucket) {
         meterBucket = mb;
-        const h = (unlockedN / N) * H_MAX;
+        const h = Math.max(0, histEntropy(glyphCounts) - H_TARGET[fi]);
         bits.textContent = h.toFixed(3);
-      }
-
-      const wantQuote = seg === "hold" || (seg === "resolve" && p > 0.55);
-      if (wantQuote !== quoteOn) {
-        quoteOn = wantQuote;
-        showQuote(fi, wantQuote);
       }
     };
     raf = requestAnimationFrame(tick);
@@ -319,7 +332,7 @@ export default function AsciiMorph() {
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       ptr.tx = ((e.clientX - r.left) / r.width) * ASCII_COLS;
-      ptr.ty = ((e.clientY - r.top) / r.height) * ASCII_ROWS;
+      ptr.ty = ((e.clientY - r.top) / r.height) * ROWS;
       ptr.ta = 1;
     };
     const onLeave = () => {
@@ -340,12 +353,12 @@ export default function AsciiMorph() {
     <div className="flex min-h-0 flex-1 flex-col items-center gap-4 md:flex-none md:items-start">
       <div
         ref={boxRef}
-        className="flex min-h-0 w-full flex-1 items-center justify-center md:h-[396px] md:w-[352px] md:flex-none md:items-start md:justify-start"
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center md:h-[484px] md:w-[352px] md:flex-none md:items-start md:justify-start"
       >
         <canvas
           ref={canvasRef}
           aria-hidden="true"
-          className="block select-none"
+          className="absolute inset-0 m-auto block select-none md:static md:m-0"
         />
       </div>
       <div
@@ -355,21 +368,10 @@ export default function AsciiMorph() {
         <span className="uppercase tracking-widest">entropy</span>
         <span className="tabular-nums">
           <span ref={bitsRef} className="text-muted">
-            {H_MAX.toFixed(3)}
+            {(H_MAX - H_TARGET[0]).toFixed(3)}
           </span>{" "}
           bits/cell
         </span>
-      </div>
-      <div className="min-h-10 w-full max-w-72 self-center md:max-w-[352px] md:self-start">
-        <blockquote
-          ref={quoteRef}
-          style={{
-            opacity: 0,
-            transform: "translateY(-3px) scaleY(0.55)",
-            transformOrigin: "top left",
-          }}
-          className="w-fit border-l-2 border-dim pl-3 font-sans italic text-muted text-xs md:text-sm leading-relaxed transition-all duration-700 ease-out will-change-transform"
-        />
       </div>
     </div>
   );
