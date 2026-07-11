@@ -7,7 +7,7 @@ export default function Home() {
 
   return (
     <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16 space-y-14">
-      <div className="flex min-h-[calc(100svh-108px)] flex-col gap-8 sm:min-h-[calc(100svh-132px)] md:min-h-0 md:flex-row md:items-center md:gap-10">
+      <div className="flex min-h-[calc(100svh-148px)] flex-col gap-8 sm:min-h-[calc(100svh-196px)] md:min-h-0 md:flex-row md:items-center md:gap-10">
         <div className="space-y-10 md:space-y-14 md:flex-1 min-w-0">
           <section className="rise">
             <h1 className="text-fg text-lg font-medium mb-3">

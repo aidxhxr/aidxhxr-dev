@@ -18,6 +18,10 @@ const DIM = 0.3;
 const CHAOS = "@#%*+=~-:.oxiltf/\\|()<>";
 const N = ASCII_COLS * ASCII_ROWS;
 const ASPECT = (ASCII_COLS * CELL_W) / (ASCII_ROWS * CELL_H);
+const H_MAX = Math.log2(CHAOS.length);
+const METER = 12;
+const METER_FULL = CHAOS.slice(0, METER);
+const METER_QUIET = "·".repeat(METER);
 
 const GLYPHS = (() => {
   const s = new Set<string>(CHAOS);
@@ -72,6 +76,8 @@ export default function AsciiMorph() {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const quoteRef = useRef<HTMLQuoteElement>(null);
+  const meterRef = useRef<HTMLSpanElement>(null);
+  const bitsRef = useRef<HTMLSpanElement>(null);
   const atlasRef = useRef<HTMLCanvasElement | null>(null);
   const staticDrawRef = useRef<(() => void) | null>(null);
   const buildRef = useRef<(() => void) | null>(null);
@@ -110,7 +116,9 @@ export default function AsciiMorph() {
     const canvas = canvasRef.current;
     const quote = quoteRef.current;
     const box = boxRef.current;
-    if (!canvas || !quote || !box) return;
+    const meter = meterRef.current;
+    const bits = bitsRef.current;
+    if (!canvas || !quote || !box || !meter || !bits) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const ctx = canvas.getContext("2d")!;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -165,6 +173,8 @@ export default function AsciiMorph() {
       fit();
       const ro = new ResizeObserver(fit);
       ro.observe(box);
+      meter.textContent = METER_QUIET;
+      bits.textContent = "0.000";
       showQuote(0, true);
       return () => {
         staticDrawRef.current = null;
@@ -187,6 +197,7 @@ export default function AsciiMorph() {
     const ptr = { x: 0, y: 0, tx: 0, ty: 0, a: 0, ta: 0 };
     let quoteOn = false;
     let raf = 0;
+    let meterBucket = -1;
     const start = performance.now();
 
     const tick = (now: number) => {
@@ -228,6 +239,7 @@ export default function AsciiMorph() {
       const bucket = (now / 55) | 0;
       const lamp = ptr.a > 0.01;
       const wt = now * 0.0011;
+      let unlockedN = 0;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let i = 0;
       for (let y = 0; y < ASCII_ROWS; y++) {
@@ -251,6 +263,7 @@ export default function AsciiMorph() {
               b += (1 - BASE) * glow * glow;
             }
           } else {
+            unlockedN++;
             glyph = CHAOS[(i * 31 + bucket * 101 + ((rnd[i] * 89) | 0)) % CHAOS.length];
             b = DIM;
             if (seg === "dissolve") {
@@ -266,6 +279,18 @@ export default function AsciiMorph() {
           }
           blit(x, y, glyph, Math.min(1, b));
         }
+      }
+
+      const mb = (now / 90) | 0;
+      if (mb !== meterBucket) {
+        meterBucket = mb;
+        const h = (unlockedN / N) * H_MAX;
+        const fill = Math.round((h / H_MAX) * METER);
+        let m = "";
+        for (let k = 0; k < METER; k++)
+          m += k < fill ? CHAOS[(k * 7 + mb * 13 + k * k) % CHAOS.length] : "·";
+        meter.textContent = m;
+        bits.textContent = h.toFixed(3);
       }
 
       const wantQuote = seg === "hold" || (seg === "resolve" && p > 0.55);
@@ -307,6 +332,19 @@ export default function AsciiMorph() {
           aria-hidden="true"
           className="block select-none"
         />
+      </div>
+      <div
+        aria-hidden="true"
+        className="flex w-full max-w-72 items-baseline gap-2 self-center font-mono text-[10px] text-dim select-none md:max-w-[384px] md:self-start"
+      >
+        <span className="uppercase tracking-widest">entropy</span>
+        <span ref={meterRef}>{METER_FULL}</span>
+        <span className="tabular-nums">
+          <span ref={bitsRef} className="text-muted">
+            {H_MAX.toFixed(3)}
+          </span>{" "}
+          bits/cell
+        </span>
       </div>
       <div className="min-h-10 w-full max-w-72 self-center md:max-w-[384px] md:self-start">
         <blockquote
