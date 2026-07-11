@@ -29,6 +29,29 @@ const GLYPHS = (() => {
 })();
 
 const GLYPH_INDEX = new Map([...GLYPHS].map((ch, i) => [ch, i]));
+const SPACE_IDX = GLYPHS.length;
+
+function histEntropy(counts: ArrayLike<number>) {
+  let h = 0;
+  for (let k = 0; k < counts.length; k++) {
+    const c = counts[k];
+    if (!c) continue;
+    const q = c / N;
+    h -= q * Math.log2(q);
+  }
+  return h;
+}
+
+const H_TARGET = ASCII_FRAMES.map((frame) => {
+  const counts = new Float64Array(GLYPHS.length + 1);
+  for (let y = 0; y < ASCII_ROWS; y++) {
+    const row = frame[y];
+    for (let x = 0; x < ASCII_COLS; x++) {
+      counts[GLYPH_INDEX.get(row[x] ?? " ") ?? SPACE_IDX]++;
+    }
+  }
+  return histEntropy(counts);
+});
 
 function hexToRgb(hex: string): [number, number, number] {
   let h = hex.replace("#", "").trim();
@@ -327,7 +350,7 @@ export default function AsciiMorph() {
       </div>
       <div
         aria-hidden="true"
-        className="flex w-full max-w-72 items-baseline gap-2 self-center font-mono text-[10px] text-dim select-none md:max-w-[352px] md:self-start"
+        className="flex w-full max-w-72 items-baseline justify-center gap-2 self-center font-mono text-[10px] text-dim select-none md:max-w-[352px]"
       >
         <span className="uppercase tracking-widest">entropy</span>
         <span className="tabular-nums">
