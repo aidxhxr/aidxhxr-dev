@@ -239,6 +239,9 @@ export default function AsciiMorph() {
       const bucket = (now / 55) | 0;
       const lamp = ptr.a > 0.01;
       const wt = now * 0.0011;
+      let amp = 0.06;
+      if (seg === "hold")
+        amp = 0.06 * (1 - Math.min(1, p / 0.1, (1 - p) / 0.1));
       let unlockedN = 0;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let i = 0;
@@ -256,7 +259,7 @@ export default function AsciiMorph() {
           if (locked) {
             glyph = row[x] ?? " ";
             if (glyph === " ") continue;
-            b = BASE + 0.06 * Math.sin(wt + x * 0.16 + y * 0.24 + rnd[i] * 2);
+            b = BASE + amp * Math.sin(wt + x * 0.16 + y * 0.24 + rnd[i] * 2);
             if (seg === "resolve") {
               const age = (p - ranks[i]) * SEG_RESOLVE;
               const glow = Math.max(0, 1 - age / 450);
