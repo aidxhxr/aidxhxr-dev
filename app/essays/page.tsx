@@ -13,12 +13,12 @@ export default function EssaysPage() {
           essays
         </h1>
         <p className="text-sm text-muted leading-relaxed">
-          nothing here yet — personal reflections are coming soon.
+          personal takes coming soon
         </p>
       </header>
       <SandText />
       <p className="mt-6 text-xs font-mono text-dim">
-        run your cursor through the sand — click to blast it.
+        run your cursor through the sand. click to blast it.
       </p>
     </div>
   );
