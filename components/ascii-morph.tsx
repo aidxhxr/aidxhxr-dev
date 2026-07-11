@@ -164,7 +164,10 @@ export default function AsciiMorph() {
 
     const fit = () => {
       const r = box.getBoundingClientRect();
-      const availH = r.height || Infinity;
+      const cap = window.matchMedia("(min-width: 768px)").matches
+        ? Infinity
+        : Math.max(48, window.innerHeight - (r.top + window.scrollY) - 72);
+      const availH = Math.min(r.height || cap, cap);
       const w = Math.max(32, Math.min(r.width, availH * ASPECT));
       const h = w / ASPECT;
       canvas.style.width = `${w}px`;
