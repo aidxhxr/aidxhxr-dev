@@ -19,9 +19,6 @@ const CHAOS = "@#%*+=~-:.oxiltf/\\|()<>";
 const N = ASCII_COLS * ASCII_ROWS;
 const ASPECT = (ASCII_COLS * CELL_W) / (ASCII_ROWS * CELL_H);
 const H_MAX = Math.log2(CHAOS.length);
-const METER = 12;
-const METER_FULL = CHAOS.slice(0, METER);
-const METER_QUIET = "·".repeat(METER);
 
 const GLYPHS = (() => {
   const s = new Set<string>(CHAOS);
@@ -76,7 +73,6 @@ export default function AsciiMorph() {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const quoteRef = useRef<HTMLQuoteElement>(null);
-  const meterRef = useRef<HTMLSpanElement>(null);
   const bitsRef = useRef<HTMLSpanElement>(null);
   const atlasRef = useRef<HTMLCanvasElement | null>(null);
   const staticDrawRef = useRef<(() => void) | null>(null);
@@ -116,9 +112,8 @@ export default function AsciiMorph() {
     const canvas = canvasRef.current;
     const quote = quoteRef.current;
     const box = boxRef.current;
-    const meter = meterRef.current;
     const bits = bitsRef.current;
-    if (!canvas || !quote || !box || !meter || !bits) return;
+    if (!canvas || !quote || !box || !bits) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const ctx = canvas.getContext("2d")!;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -173,7 +168,6 @@ export default function AsciiMorph() {
       fit();
       const ro = new ResizeObserver(fit);
       ro.observe(box);
-      meter.textContent = METER_QUIET;
       bits.textContent = "0.000";
       showQuote(0, true);
       return () => {
@@ -288,11 +282,6 @@ export default function AsciiMorph() {
       if (mb !== meterBucket) {
         meterBucket = mb;
         const h = (unlockedN / N) * H_MAX;
-        const fill = Math.round((h / H_MAX) * METER);
-        let m = "";
-        for (let k = 0; k < METER; k++)
-          m += k < fill ? CHAOS[(k * 7 + mb * 13 + k * k) % CHAOS.length] : "·";
-        meter.textContent = m;
         bits.textContent = h.toFixed(3);
       }
 
@@ -328,7 +317,7 @@ export default function AsciiMorph() {
     <div className="flex min-h-0 flex-1 flex-col items-center gap-4 md:flex-none md:items-start">
       <div
         ref={boxRef}
-        className="flex min-h-0 w-full flex-1 items-center justify-center md:h-[432px] md:w-[384px] md:flex-none md:items-start md:justify-start"
+        className="flex min-h-0 w-full flex-1 items-center justify-center md:h-[396px] md:w-[352px] md:flex-none md:items-start md:justify-start"
       >
         <canvas
           ref={canvasRef}
@@ -338,10 +327,9 @@ export default function AsciiMorph() {
       </div>
       <div
         aria-hidden="true"
-        className="flex w-full max-w-72 items-baseline gap-2 self-center font-mono text-[10px] text-dim select-none md:max-w-[384px] md:self-start"
+        className="flex w-full max-w-72 items-baseline gap-2 self-center font-mono text-[10px] text-dim select-none md:max-w-[352px] md:self-start"
       >
         <span className="uppercase tracking-widest">entropy</span>
-        <span ref={meterRef}>{METER_FULL}</span>
         <span className="tabular-nums">
           <span ref={bitsRef} className="text-muted">
             {H_MAX.toFixed(3)}
@@ -349,7 +337,7 @@ export default function AsciiMorph() {
           bits/cell
         </span>
       </div>
-      <div className="min-h-10 w-full max-w-72 self-center md:max-w-[384px] md:self-start">
+      <div className="min-h-10 w-full max-w-72 self-center md:max-w-[352px] md:self-start">
         <blockquote
           ref={quoteRef}
           style={{
