@@ -44,9 +44,9 @@ const experience = [
     period: "jan – may 2026",
     location: "remote",
     bullets: [
-      "selected for a competitive fellowship (sub-8% acceptance) preparing students for careers across tech, finance, and consulting",
+      "selected to the tech track of a competitive fellowship (sub-8% acceptance) focused on engineering skills and technical career prep",
       "improved how HeadStart manages its network by building a graph CRUD system with Go, gRPC, Neo4j, and a TypeScript frontend",
-      "sharpened financial-analysis and professional skills through mentorship and direct engagement with corporate partners including Sixth Street",
+      "sharpened engineering and professional skills through mentorship and direct engagement with corporate partners",
     ],
   },
   {
