@@ -11,7 +11,7 @@ export const posts: Post[] = [
     title: "learning physics-informed neural networks",
     date: "2026-06-01",
     description:
-      "Six months of reading Raissi, Lu, and Ji — implementing PINNs from scratch in PyTorch, running experiments on a 96GB GPU.",
+      "A CS066 final project that didn't stop at the semester. Reimplementing Raissi, Lu, and Ji in PyTorch, and finding out where PINNs actually work.",
   },
   {
     slug: "swatgpt",
