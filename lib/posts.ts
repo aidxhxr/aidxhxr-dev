@@ -18,7 +18,7 @@ export const posts: Post[] = [
     title: "swatgpt: self-hosting a 30b model on campus",
     date: "2026-04-15",
     description:
-      "RAG pipeline with local embeddings and re-ranking, Docker, and a forked LibreChat UI — all on an Nvidia Blackwell with 96GB VRAM.",
+      "Qwen3-30B on the college's Blackwell card, a crawler for swarthmore.edu, and a week of learning that localhost inside a container means the container.",
   },
   {
     slug: "breadcrumbs",
