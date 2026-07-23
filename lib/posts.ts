@@ -25,7 +25,7 @@ export const posts: Post[] = [
     title: "breadcrumbs: a social platform built around what you don't post",
     date: "2026-03-10",
     description:
-      "Five items a day, 24-hour expiry, group-based feeds. Designing around intentional sharing instead of maximizing engagement.",
+      "Five posts a day, gone in 24 hours, split by group. Trying to build the thing my good group chats already are by accident.",
   },
   {
     slug: "building-tickflow",

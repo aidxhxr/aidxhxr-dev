@@ -1,55 +1,45 @@
-Most social media is optimized to maximize time-on-platform. Every mechanic — infinite scroll, likes, notifications — exists to keep you coming back. I've been thinking about what a platform designed around the opposite premise would look like.
+Breadcrumbs is an app I've been designing and half-building. The rule is that you get five posts a day per group, they go out at a time the group picks, and they're gone in 24 hours.
 
-Breadcrumbs started from a simple constraint: **five items per day, per group**. Text, photos, short videos — you get five. That's it. After that, they queue for posting at a time the group decides on, and they expire after 24 hours.
+The idea came from noticing that the group chats I actually like are the ones where nobody's performing. Nothing about the software encourages that. It just happens to be five people who know each other. I wanted to see whether you could get there on purpose.
 
-## The constraint is the product
+## five
 
-Five items sounds restrictive until you think about what it does. It forces you to be intentional. Instead of posting every meal and every coffee, you pick the moments that actually mattered. The feed on the other end isn't noise — it's curated by the constraint itself, not by an algorithm.
+Five is small enough that you have to choose. If you posted every coffee you'd be out by noon, so you don't, and what's left is the stuff you'd have mentioned to a friend anyway. The feed on the other side is short because the limit made it short, not because something decided what to show you.
 
-This is different from what BeReal or Stories do. BeReal has one moment per day, which is too few and creates a specific kind of performance pressure (you have to capture "the right" moment). Instagram Stories are unlimited, which is the problem I'm trying to solve. Five is a deliberate middle ground — enough to capture the texture of a day, not enough to turn it into content.
+BeReal is one post a day, and one is worse than five in a way I didn't expect until I used it. When you only get one moment you start waiting for a good one, and now you're performing again, just with more anxiety about it. Stories are unlimited, which is the thing I'm trying to get away from.
 
-## Group-based, not broadcast
+I picked five because it felt right, which is not a great reason. It might be three. It might be different for a family group than for four friends who see each other every day. I don't have a way to know that without people using it.
 
-Breadcrumbs is organized around groups, not a single public or friends feed. You join groups: your close friends, your family, your teammates, your roommates. Each has its own feed, its own schedule, its own norms.
+## groups instead of a feed
 
-This reflects how social life actually works. I share differently with my family than with my college friends, and differently with them than with people I play basketball with. Platforms that collapse all of these into one feed make nuanced sharing impossible. You either share publicly with everyone or you share with no one.
+You don't have one Breadcrumbs feed. You have a family group, a close friends group, whatever your team is. Each one is separate, with its own posting time and its own norms.
 
-The groups are entirely separate. What you post in your family group doesn't appear in your friends feed. The privacy model is simple enough to reason about, which matters for trust.
+I share differently with my parents than with my friends from home than with people I play ball with, and every platform that flattens those into one audience makes me post less, because I'm writing for the most conservative reader in the room. Separate groups fix that by not creating the problem. What goes in one doesn't appear in another, and that's a rule simple enough that you can hold it in your head, which I think matters more for trust than any privacy settings page.
 
-## Group leaders and the posting window
+## someone has to set the time
 
-Each group has a leader who sets the daily posting window — the deadline by which members need to have submitted their five items. Miss the deadline, your count resets for the day. You're not penalized beyond that.
+Each group has a leader who picks the daily posting window. Miss it and your five don't go out that day. Nothing else happens.
 
-This creates a lightweight commitment device. If your friend group has agreed to share by 9pm, you start thinking throughout the day about what to capture. The platform becomes a reason to be present rather than a substitute for it.
+I like this because it puts a person in the role that an algorithm would otherwise take. A human decided this group posts at 9pm, and if it's wrong you can tell them. They can move it, let someone off, or shut the group down.
 
-The group leader role is deliberately human. There's no algorithmic feed curation — a person decided when this group shares, and that person is accountable to the group. The leader can adjust the time, let someone off the hook, or dissolve the group entirely. The mechanics are simple enough that the social norms can do most of the work.
+It's also the part most likely to break. What happens when the leader graduates or just stops opening the app? Does the window need to be the same every day? Should there be a fallback? I've written three versions of this in my notes and none of them are obviously right, and I suspect the answer only shows up once a group has actually been using it for a few months.
 
-## 24-hour expiry
+## expiry
 
-Stories on Instagram expire. BeReal is time-limited. There's something psychologically useful about content that goes away — it reduces the pressure to make things look good, and it makes the sharing feel more like a message than a broadcast.
+Posts disappear after a day by default. The reasoning is the same as everywhere else it's been done: when something is permanent you edit it, and when it's gone tomorrow you don't.
 
-Breadcrumbs is for your day, not your highlight reel. When content disappears, you stop optimizing for permanence and start sharing how things actually are.
+Groups can turn retention on if they want. Parents tracking a kid probably want to keep everything. Four people posting their Tuesday evenings probably don't. Default off, opt-in per group.
 
-Groups can choose to retain content if they want. A family tracking a kid's growing up might want everything saved. A group of friends sharing their Tuesday evenings probably doesn't. The default is expiry; retention is opt-in and group-level.
+## the location trail
 
-## The location trail
+The one feature I'm actually excited about, which is also the one I'm least sure about: optional background location logging that posts a map of your day to your premium groups in the evening.
 
-The premium tier adds automatic location logging. Throughout the day, your location is tracked (opt-in, obviously). At 7pm, the app automatically posts a "day trail" — a map of where you went — to your premium groups.
+It removes the part where you have to remember to post. And a trail is a different kind of information than a photo. You didn't curate it. It shows you went to the library at two and left at six and stopped somewhere on the way back, and combined with three photos and a line of text it says more about a day than any of those separately.
 
-This is the feature I'm most excited about. It's automatic, which removes the friction of remembering to post. And it creates a new kind of content: not a curated moment, but an honest record of your day. Where you went, when you left, how long you stayed. It's the context behind the five items.
+It's also the feature that requires the most trust, and I don't think it should be on by default or available in every group. Right now I have it gated behind the premium tier, mostly because that limits who's exposed to it, which is a strange reason to charge for something.
 
-A day trail plus three photos plus a text note can tell a story that none of those pieces could tell on their own.
+## the part I have no answer to
 
-## What I don't know yet
+A social app with no users is nothing, and this one is worse than most in that respect, because it only works with people you actually know. You can't seed it with strangers. Every group has to arrive more or less intact.
 
-The group leader mechanic could get complicated at scale. What happens when the leader is unavailable? Does the posting window need to be fixed? Can it vary by day? I don't have clean answers to these yet.
-
-The five-item limit is based on intuition, not data. It might be too few for some groups, too many for others. I expect this to need calibration in practice, and I'm genuinely uncertain where it settles.
-
-There's also the bootstrapping problem. A social platform with no users is worthless. Getting to critical mass in a small, trust-based network is harder than building the features. This is probably the hardest problem, and I don't have a good answer to it.
-
-## The philosophy behind it
-
-Breadcrumbs is designed around meaningful connection rather than public performance. The mechanics — the limit, the expiry, the group structure — are all trying to shift the incentives away from "make content people engage with" toward "share your actual day with people you care about."
-
-I don't know if it would work at scale. But I think the core idea is right: the best social experiences I've had have been time-limited, context-specific, and with a small group of people. Breadcrumbs is an attempt to make that the default rather than the exception.
+I don't have a plan for that. The features are the easy part and I know it. But the small, time-limited, no-audience version of sharing is the only kind I've enjoyed in years, and it seems worth trying to build the thing that defaults to it.
