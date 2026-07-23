@@ -1,35 +1,45 @@
-I've been building TickFlow on and off for a few months — a task and project management tool for student organizations. It started as a class project and turned into something I actually wanted to exist.
+Every student org I've been in runs on the same stack: a group chat, a pinned message that went stale in October, and one person who remembers what everyone agreed to. Notion works if someone fills it in. Trello works but it lives off to the side of wherever the group actually talks, so it slowly stops matching reality.
 
-Here's what I learned.
+TickFlow is the boring version. Projects, tasks, who's on what, what state it's in. It runs on SCCS infrastructure at `tickflow.sccs.swarthmore.edu`.
 
-## The problem worth solving
+## the schema took the longest
 
-Student orgs have a surprisingly bad time with project management. Notion is overkill. Trello is fine but disconnected from anything else. Most groups end up relying on group chats where tasks get lost instantly.
+`prisma/schema.prisma` is about 80 lines and I rewrote it three times.
 
-TickFlow was supposed to fix that: a simple ticketing system, tied to your org, where you can assign tasks, track status, and see what's actually getting done.
+The first version hung assignees off the task as an `Int[]` of user IDs. Postgres supports it, Prisma exposes it, and it's fine until you want to answer "what is this person assigned to." Then you're pulling every task and filtering in application code. The fix was a `TaskAssignee` join table keyed on `([taskId, userId])`. Membership works the same way: `ProjectMember`, composite key, plus a role that's either `lead` or `member`.
 
-## Schema decisions I got wrong first
+Nothing clever about that. I just didn't think about the reverse query when I wrote it the first time, and rewriting relations after routes already depend on them is annoying in a way that's hard to appreciate until you've done it.
 
-The first version had tasks and projects as two separate top-level tables with no real relationship between them. Made querying a mess. The fix was obvious in retrospect: projects own tasks, orgs own projects. A simple hierarchy.
+The one decision I still like is putting `blocked` and `shipped` in the status enum instead of making them boolean flags:
 
 ```
-org → projects → tasks → comments
+backlog | todo | inprogress | done | blocked | shipped
 ```
 
-Getting the hierarchy right early matters a lot. Refactoring relationships after you've built the API surface is painful.
+Blocked-and-in-progress isn't a state that means anything, and if it's a flag you have to keep deciding what it means alongside every other status. `done` is "the person finished it," `shipped` is "it's actually live," and student orgs need both because those are usually weeks apart.
 
-## Auth tradeoffs
+## auth is the part I haven't done
 
-I went with JWT over sessions — not because it's better for this case (it probably isn't), but because I wanted to understand it properly. Sessions with a server-side store would've been simpler and safer. JWT is fine if you're careful about expiry and rotation, but the "stateless" pitch is oversold when you still need a refresh token flow anyway.
+There's a `password` column on `User` that nothing writes to yet. I keep circling this and not landing.
 
-If I were starting over, I'd reach for a session-based approach by default and only deviate with a clear reason.
+The honest reason is that I started reading about JWTs because they sounded like the thing you're supposed to use, got a few hours in, and realized that for an app where every user is a Swarthmore student hitting one server, a session row in Postgres does everything I need with less to get wrong. The stateless pitch doesn't buy me much when I'd want revocation anyway. So I stopped, and now it's the last real gap. Probably sessions. Possibly whatever SCCS already uses for SSO, if I can get access to it.
 
-## Simple beats clever
+## deploying it
 
-The biggest lesson: the more I tried to make things elegant, the harder the code got to read. The API layer is a bunch of route handlers with direct DB queries. No fancy ORM abstractions, no query builders. Just SQL, typed with the schema.
+The app is Next.js 16 with server actions rather than a REST layer, which means most mutations are a function in `actions/actions.ts` that writes through Prisma and calls `revalidatePath`. Ninety-one lines for the whole file. I expected to outgrow that by now.
 
-Boring to write. Easy to debug. Worth it.
+Deployment is Docker Swarm behind Traefik, pinned to a specific node:
+
+```yaml
+placement:
+  constraints:
+    - node.hostname == gull
+```
+
+The pinning is because the Postgres volume is a bind mount on that machine. If the service gets scheduled anywhere else it comes up with an empty database, which I found out the way you'd expect.
+
+The container runs `prisma migrate deploy` before starting the server. This is the part I'd push back on if someone else did it, since a failed migration takes the app down instead of just failing a deploy step, but I'm the only one deploying and it means I can't forget.
 
 ---
 
-TickFlow is still in progress. The core flow works — create an org, add members, create a project, file tickets, update them. The parts I want to add next: notifications, and a better dashboard view.
+Current state: you can make a project, add people, file tasks, assign them, move them across the board. No notifications, no auth, no activity feed. Next is auth, because without it none of the rest is real.

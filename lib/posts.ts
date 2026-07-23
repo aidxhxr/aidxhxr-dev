@@ -32,6 +32,6 @@ export const posts: Post[] = [
     title: "building tickflow: task management for student orgs",
     date: "2026-02-20",
     description:
-      "Schema decisions, auth tradeoffs, and why simple beats clever in a full-stack ticketing system.",
+      "Rewriting the Prisma schema three times, pinning a Swarm service to one node, and still not having built auth.",
   },
 ];
