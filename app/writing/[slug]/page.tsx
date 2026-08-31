@@ -67,6 +67,7 @@ export default async function PostPage({
             year: "numeric",
             month: "long",
             day: "numeric",
+            timeZone: "UTC",
           })}
         </p>
         {project && (
