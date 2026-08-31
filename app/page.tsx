@@ -14,8 +14,7 @@ export default function Home() {
               Amirkhan Aidarkhan
             </h1>
             <p className="text-muted text-sm leading-relaxed">
-              CS and Applied Math student at Swarthmore. Pursuing my natural rabbit holes and
-              building things along the way.
+              Pursuing my natural rabbit holes and building things along the way.
             </p>
           </section>
 
