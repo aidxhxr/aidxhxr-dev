@@ -11,7 +11,7 @@ const experience = [
     period: "jun – aug 2026",
     location: "remote",
     bullets: [
-      "earned a spot as 1 of 150 fellows from 1,500 applicants (top 10%) for a 10-week mentorship with a Google software engineer on data structures, algorithms, and technical interviews",
+      "earned a spot as 1 of 250 fellows from 1,500 applicants for a 10-week mentorship with a Google software engineer on data structures, algorithms, and technical interviews",
       "building data-intensive infrastructure in Rust and C++ alongside Google SWE Parneet Kaur",
     ],
   },
