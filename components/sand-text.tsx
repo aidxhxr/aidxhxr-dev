@@ -3,7 +3,7 @@
 import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 
-const PHRASES = ["personal reflections", "coming soon"];
+const PHRASES = ["coming soon"];
 const HOLD_MS = 3600;
 
 type Grain = { x: number; y: number; v: number; ty: number };
@@ -421,7 +421,7 @@ export default function SandText() {
     <div ref={wrapRef} className="w-full">
       <canvas
         ref={canvasRef}
-        aria-label="falling sand spelling: personal reflections, coming soon"
+        aria-label="falling sand spelling: coming soon"
         className="w-full touch-none select-none"
         style={{ imageRendering: "pixelated" }}
       />

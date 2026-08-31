@@ -13,13 +13,12 @@ export default function EssaysPage() {
           essays
         </h1>
         <p className="text-sm text-muted leading-relaxed">
-          personal takes coming soon
+          I have been deeply inspired by the essays I have read all over the
+          internet, from Tim Denning on X to Zvi Mowshowitz on LessWrong. In
+          the near future, I hope to share my own first principles here.
         </p>
       </header>
       <SandText />
-      <p className="mt-6 text-xs font-mono text-dim">
-        run your cursor through the sand. click to blast it.
-      </p>
     </div>
   );
 }
