@@ -23,12 +23,12 @@ export const projects: Project[] = [
   {
     name: "SwatGPT",
     description:
-      "Self-hosted LLM with RAG for Swarthmore. Qwen3-30B-A3B on an Nvidia Blackwell 96GB GPU, local embeddings and re-ranking, campus domain scraped. LibreChat fork for the UI.",
-    github: "https://github.com/aidxhxr/SwatChat-v2",
+      "Swarthmore's self-hosted campus LLM, run by SCCS. Qwen3.6-35B-A3B on vLLM, hybrid dense and sparse retrieval over 3,500 scraped campus docs with a 1.5 second fail-open budget, live campus data over MCP, Keycloak login. Nothing leaves campus.",
+    github: "https://github.com/swat-sccs/SwatGPT",
     slug: "swatgpt",
-    demo: "/",
-    date: "Apr 2026",
-    tags: ["Python", "Docker", "CUDA", "RAG", "vLLM"],
+    demo: "https://chat.sccs.swarthmore.edu",
+    date: "Aug 2026",
+    tags: ["TypeScript", "Python", "vLLM", "Qdrant", "RAG", "Docker"],
   },
   {
     name: "PINN Research",

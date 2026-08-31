@@ -15,10 +15,10 @@ export const posts: Post[] = [
   },
   {
     slug: "swatgpt",
-    title: "swatgpt: self-hosting a 30b model on campus",
-    date: "2026-04-15",
+    title: "swatgpt: a campus llm that stays on campus",
+    date: "2026-08-24",
     description:
-      "Qwen3-30B on the college's Blackwell card, a crawler for swarthmore.edu, and a week of learning that localhost inside a container means the container.",
+      "Rebuilt on LibreChat: three scrapers, hybrid dense and sparse retrieval on a 1.5 second budget, live campus data over MCP, and a deploy that refuses to go green with zero tools.",
   },
   {
     slug: "grokeye",

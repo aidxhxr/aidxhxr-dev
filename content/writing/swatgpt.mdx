@@ -1,51 +1,67 @@
-Swarthmore has an RTX PRO 6000 Blackwell with 96GB of VRAM. For a liberal arts college that is a strange amount of compute to have sitting in a rack, and for most of the year it isn't doing much.
+Swarthmore has an RTX PRO 6000 Blackwell with 96GB of VRAM. For a liberal arts college that is a strange amount of compute to have sitting in a rack, and for most of the year it wasn't doing much.
 
-SwatGPT came out of wanting to use it for something. ChatGPT is better than anything I can host, but it doesn't know that Sharples is now Dining Center, or which CS courses have prerequisites that aren't listed on the registrar page, or what the shuttle schedule is. That gap is small enough to be fixable and specific enough to be useful.
+SwatGPT came out of wanting to use it for something. ChatGPT is better than anything I can host, but it doesn't know that Sharples is now Dining Center, or which CS courses have prerequisites the registrar page doesn't list, or how to get on the VPN. That gap is small enough to be fixable and specific enough to be useful. It's live at [chat.sccs.swarthmore.edu](https://chat.sccs.swarthmore.edu) behind an SCCS login. About 1,300 people have used it, around 200 in a given week, and it generates something like 88 million tokens a week. Nothing anyone types leaves campus.
 
-## picking a model
+<Figure src="/writing/swatgpt/landing.jpg" alt="SwatGPT landing page: SCCS logo, 'Ask about campus life, ITS, courses, or College resources', four starter questions" caption="the landing page. four starters, one model, no model picker." />
 
-Qwen3-30B-A3B. It's mixture-of-experts, so 30B parameters total but only about 3B active per forward pass, which is why it's fast enough to serve several people at once on one card.
+This post has been rewritten once. The first version of SwatGPT was a spring project: my own crawler, OpenWebUI in front, its built-in retrieval in the middle. In August I rebuilt it from scratch on top of current LibreChat under the SCCS org, and most of what follows is about that version.
 
-I started with llama.cpp because it took ten minutes to get running and I wanted to see the thing talk. That was the right call for a first day and the wrong thing to keep. Once more than one person was using it the responses got noticeably slower, because requests were being handled more or less one after another. Switching to vLLM fixed that. Its continuous batching packs concurrent requests into the same forward pass instead of queueing them, and with 96GB there's plenty of headroom for the KV cache that makes possible.
+## the model
 
-The quantization result surprised me. I expected INT4 to cost real quality and mostly it didn't, at least on the campus-question workload I was testing. What it bought was memory, and memory is throughput here, because it's what determines how many concurrent sequences fit in the cache. I tried Q8 in the middle and never found a reason to keep it.
+Qwen3.6-35B-A3B in FP8. It's mixture-of-experts, 35B parameters total and about 3B active per token, which is why it can serve several people at once on one card. Thinking mode is off. It made answers slower and, for "when is the post office open," not better.
+
+I started the spring version with llama.cpp because it took ten minutes to get running and I wanted to see the thing talk. That was the right call for a first day and the wrong thing to keep. Once more than one person was using it the responses got slower, because requests were handled more or less one after another. vLLM fixed that. Its continuous batching packs concurrent requests into the same forward pass, and with 96GB there's headroom for the KV cache that makes possible. The embedding and reranking models share the same GPU now, at 85% memory utilization for vLLM, which leaves about 13GB for them. We used to have a second card for that and then we didn't.
+
+## the corpus
+
+The base model knows nothing about Swarthmore, so everything useful comes from retrieval, and retrieval is only as good as what you feed it.
+
+The spring version had a general crawler over `swarthmore.edu`. It respected `robots.txt`, took two days, and produced a few hundred thousand chunks where everything was 0.7 similar to everything else, because institutional websites are nine thousand pages of the same nav chrome and footer. I spent more time cleaning that output than crawling it.
+
+This time there are three targeted scrapers. `scrape_kb.py` pulls every article from the ITS knowledge base through the MediaWiki API, which gives you clean wikitext instead of rendered HTML. `scrape_www.py` walks the sitemap with an allowlist of sections and department pages, runs the body through trafilatura, and drops anything under 300 characters. `scrape_catalog.py` is the ugly one: the course catalog lives in Acalog behind an AWS WAF that blocks normal crawling, so it uses the same `ajax/preview_*.php` endpoints the site's own JavaScript calls, at one request a second, with backoff that goes from 60 seconds to 480 when it gets throttled. About 200 individual printer pages got merged into one directory and one setup guide because nobody wants a chunk per printer.
+
+Total: 3,528 markdown files. 487 knowledge base articles, 1,080 pages from the main site, 1,961 course entries.
+
+## ingestion
+
+Chunking is heading-aware now. A markdown parser splits on sections first, then a sentence splitter caps chunks at 512 tokens with 64 of overlap, and every chunk gets embedded with its breadcrumb prepended: `title › section`, then the text. That breadcrumb also feeds the lexical index, so a course title is searchable even when the body of the chunk never repeats it. The spring version used fixed-size splitting and cut course descriptions in half, which I said was the next thing to fix in the first version of this post. It was.
+
+Embeddings are gte-modernbert-base, 768 dimensions, served by a TEI container on the GPU box. The whole corpus, 3,528 documents into 11,302 chunks, embeds and indexes in 23 seconds.
+
+Reindexing is zero-downtime because of a Qdrant alias. Every ingest writes to a fresh timestamped collection, then swaps the `kb` alias to it in one operation and deletes the old ones. Nobody talking to the bot notices.
 
 ## retrieval
 
-The base model knows nothing about Swarthmore, so everything useful comes from retrieval.
+The spring version's retrieval was whatever OpenWebUI did, which was a serial embed-then-search pass before every message that you couldn't see into or tune. Average response time was about 4.5 seconds. LibreChat ships with its own separate RAG service backed by pgvector, and I ripped that out too. Retrieval is now about 300 lines of TypeScript inside LibreChat's own `packages/api`, and it runs on every message.
 
-I wrote a crawler for `swarthmore.edu`: course listings, department pages, dining, housing, club directories, faculty research pages. It respects `robots.txt` and rate limits itself, which mostly meant it took two days instead of two hours. Cleaning the output was worse than crawling it. Institutional websites are full of navigation chrome, cookie banners, and the same footer on nine thousand pages, and if you don't strip that out you get a vector index where everything is 0.7 similar to everything else. After dedup I had a few hundred thousand chunks.
+It's hybrid. A dense query and a sparse query go to Qdrant in parallel. The sparse side is a bag of hashed tokens: lowercase, split on `[a-z0-9]+`, FNV-1a each token to an index, and let Qdrant apply IDF weighting. The same tokenizer exists twice, once in TypeScript for queries and once in Python for ingest, with a comment on each saying it must stay byte-identical to the other, because if the two ever disagree the sparse index silently returns garbage. Dense catches "how do I get my laptop on the network" when the article says Wi-Fi. Sparse catches "Cornell" when you mean the library and the embedding thinks you mean the university.
 
-Embeddings run locally on the same GPU, into Qdrant. No API calls, which matters less for cost than for the fact that I can re-embed the whole corpus on a whim without asking anyone for a budget.
+The two candidate lists get merged and deduplicated to 32, which is TEI's default batch limit for the reranker. A cross-encoder scores each chunk against the question, anything below 0.3 is dropped, and the top 8 go into the context. One rule on top of that: if the best lexical hit ranked in the top three on the sparse side and didn't survive the rerank, it takes the eighth slot anyway. Entity questions ground reliably because of that rule and not because of anything smarter.
 
-The re-ranker is where the answers actually got good. Vector search gives you documents that are about the same topic as the question, which is not the same as documents that answer it. Ask about registration deadlines and you get back every page that mentions registration. A cross-encoder reads the question and a candidate document together and scores them jointly, so it can tell "this page explains the deadline" from "this page mentions deadlines exist." I pull top-20 from Qdrant, re-rank, and put the top 3 in the prompt.
+The whole thing has a budget of 1.5 seconds, wall clock, across embed, search, and rerank, on one abort signal. If it blows the budget or anything in the chain errors, the function returns `undefined`, logs one warning, and the chat proceeds without context. Slow Qdrant should never mean no answer. And it's kicked off at the top of message building, overlapped with attachments and tool setup, so most of that 1.5 seconds is hidden behind work that had to happen anyway. Average response time went from 4.5 seconds to 1.8. This one you mostly don't feel.
 
-If you're building RAG and you skip re-ranking to save latency, I think you're trading the wrong thing.
+Nineteen unit tests cover it, mostly the failure modes: connection refused, Qdrant 500, reranker 503, timeout, each env var missing. Each one should produce exactly one warning and a normal chat. Accuracy I check by hand against the list of questions people actually ask, and 96% of them come back right. That's not an eval harness, and I know it.
 
-## docker, for real this time
+<Figure src="/writing/swatgpt/sharples.jpg" alt="SwatGPT answering 'When is Sharples open today?' with breakfast, lunch, and dinner times, after running the get_campus_hours tool" caption="live data comes from a different path than the knowledge base: a tool call against the campus dashboard." />
 
-I'd used containers before in the sense of running `docker run` on someone else's image. This was the first time I had to build the thing.
+## live data
 
-Five services: vLLM, Qdrant, the embedding service, the re-ranker, and a small layer that orchestrates the pipeline. Compose makes that one command, which sounds like a small win until you've done it by hand a few times.
+Retrieval answers "how do I connect to Wi-Fi." It can't answer "when is Sharples open today," because that changes daily and the knowledge base doesn't. Damian built an MCP server for that: twelve read-only tools over The Dash, the campus dashboard, for hours, dining menus, events, news, SEPTA departures, weather, alerts. It polls on a schedule into its own Postgres and serves from the snapshot, so if The Dash goes down, the bot degrades to yesterday's data rather than hanging.
 
-The mistake I made repeatedly, over about a week: using `localhost` for inter-container calls. Inside a container `localhost` is that container. You want the service name from the compose file as the hostname. This is documented clearly, and I still had to hit connection-refused four or five times before it became automatic.
-
-The other one was volumes. Qdrant's index lives on disk, and if you don't mount it the index disappears when the container restarts. I re-embedded the entire corpus twice before that lesson landed.
+The part of this I had to fix was LibreChat's tool cache. It expires app-level MCP tools after twelve hours, and once expired every request failed with "configured to use MCP tools, but none are available" until someone restarted the container. Two days of that before I found it. The deploy now refuses to go green unless the app log shows the MCP server initialized with a nonzero tool count.
 
 ## the frontend
 
-I forked LibreChat rather than building a chat UI, which was obviously correct and I should have done it sooner instead of spending a weekend on my own. It's an open source ChatGPT-style interface that already handles streaming, conversation history, and custom endpoints.
+It's LibreChat. The spring version was OpenWebUI, which was slow, hid its retrieval, and fought every attempt to make it look like anything other than OpenWebUI. LibreChat handles streaming, conversation history, and custom endpoints, and stays out of the way.
 
-I stripped the third-party provider integrations, pointed it at the local vLLM endpoint, and put Swarthmore branding on it. The fork is [SwatChat-v2](https://github.com/aidxhxr/SwatChat-v2).
+What's changed is how much of it is turned off. There's one model spec, enforced, so there is no model picker. Presets, bookmarks, memories, code execution, web search, the agent builder, the prompt marketplace: gated off in config, and I added an interface gate on the client so a disabled route redirects to a new chat instead of rendering an empty page. Login is Keycloak through OIDC, email registration is off, and the palettes are borrowed from two other SCCS projects rather than designed for this one.
 
-The codebase is large. I spent longer than I want to admit tracing how conversation state flows through it before I trusted myself to change anything.
+## deploying
 
-## what actually took the time
+Push to `main`. A self-hosted GitHub Actions runner on the app VM checks out the commit, rebuilds the app image and the MCP image, restarts only the changed containers, polls the app until it returns 200, checks the MCP container is healthy, and fails the deploy if the tool count is zero. About 90 seconds. Data volumes and config never get touched.
 
-Almost none of it was the model. Getting Qwen running behind vLLM was an afternoon. The rest was crawling, cleaning HTML, chunking, wiring services together, and handling the case where one stage of the pipeline returns nothing and the next stage doesn't expect that.
-
-Latency was the thing I underestimated. Embed, retrieve, re-rank, generate, and each step is fine on its own but they stack, and people notice a pipeline that takes four seconds before the first token even though every piece of it is "fast." I cache Qdrant results for the questions that get asked constantly, which helps the median and does nothing for the tail.
+The lesson from the spring version is still the lesson: inside a container, `localhost` is that container, and an unmounted volume means the index disappears on restart. I re-embedded the whole corpus twice before that one landed. This time everything is a named volume and the GPU box and the app box are different machines with different compose files.
 
 ---
 
-It's still running. The chunking is naive fixed-size splitting and it cuts through tables and course descriptions in ways that clearly hurt retrieval, so that's next. I'd also like some kind of thumbs-up signal so I can tell which answers are actually landing instead of guessing from the ones people complain about.
+Things I still don't have: a feedback signal beyond people complaining, an eval set I'd defend, and a scheduler for the scrapers, which I run by hand. The retrieval also only looks at the latest message with no query rewriting, so "what about the other one" after a good answer gets a bad one. Those are the next things.
