@@ -17,13 +17,13 @@ const experience = [
   },
   {
     company: "swarthmore college computer society (sccs)",
-    role: "system admin & software engineer",
-    period: "jan 2026 – present",
+    role: "systems administrator · vice president",
+    period: "sept 2025 – present",
     location: "swarthmore, pa",
     bullets: [
-      "keep 2,000+ daily users online across campus infrastructure (course planner, swatgpt, student catalog, club manager) by maintaining the full stack in TypeScript and PostgreSQL",
-      "administer a self-hosted Portainer fleet of 31 stacks, 95 containers, and 345 volumes on a 3-node server (512GB RAM, 5 GPUs, 165GB VRAM) with Docker and Linux",
-      "keep the platform observable by self-hosting Grafana and managing NFS storage across nodes",
+      "run production infrastructure for a 1,600-student campus at 99% uptime: a 128-thread, 503 GiB Proxmox hypervisor with 15 VMs and a 94-container Docker Swarm behind Traefik, with Keycloak SSO in front of everything",
+      "serve an RTX 6000 Pro (96 GB) and an RTX 5090 (32 GB) to 40+ professors and students for research, vLLM inference, and 3D rendering; 70 TB of ZFS with Proxmox Backup Server, Prometheus/Grafana, and CrowdSec",
+      "as vice president, lead the largest and best-funded student tech org on campus (100+ members): member project teams, a $15,000/semester budget, recruitment, events, and operations",
     ],
   },
   {
