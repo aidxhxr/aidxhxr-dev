@@ -21,6 +21,13 @@ export const posts: Post[] = [
       "Qwen3-30B on the college's Blackwell card, a crawler for swarthmore.edu, and a week of learning that localhost inside a container means the container.",
   },
   {
+    slug: "grokeye",
+    title: "grokeye: hands-free ar coaching, built in a day at grokathon",
+    date: "2026-08-10",
+    description:
+      "Top 6 at xAI's Grokathon. A regex router, three hedged Grok calls, and a 900-line TypeScript tracker to make a slow multimodal model feel present.",
+  },
+  {
     slug: "breadcrumbs",
     title: "breadcrumbs: a social platform built around what you don't post",
     date: "2026-03-10",

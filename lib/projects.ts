@@ -11,6 +11,16 @@ export type Project = {
 
 export const projects: Project[] = [
   {
+    name: "GrokEye",
+    description:
+      "Voice-driven AR coaching over a live camera feed, top 6 at xAI's Grokathon. Web Speech in, Grok 4.5 for vision and answers, xAI TTS out, three hedged requests to make box calls fast, and a dependency-free TypeScript tracker to keep them on the object.",
+    github: "https://github.com/dereky925/GrokEye",
+    slug: "grokeye",
+    demo: "https://www.youtube.com/watch?v=lC4oP8kb9KE",
+    date: "Aug 2026",
+    tags: ["TypeScript", "React", "Node.js", "Grok", "CV"],
+  },
+  {
     name: "SwatGPT",
     description:
       "Self-hosted LLM with RAG for Swarthmore. Qwen3-30B-A3B on an Nvidia Blackwell 96GB GPU, local embeddings and re-ranking, campus domain scraped. LibreChat fork for the UI.",
