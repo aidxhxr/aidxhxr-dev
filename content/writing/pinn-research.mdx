@@ -1,63 +1,83 @@
-This started as a final project for CS066 and did not stop when the semester did. I've spent most of the summer reading PINN papers, reimplementing them, and running sweeps on a 96GB GPU that is dramatically overqualified for the job.
+This started as a final project for CS066 and did not stop when the semester did. The first version of this post was about learning the method: reimplementing Raissi, reading DeepXDE's source, building a Stiff-PINN curriculum for a combustion ODE, and running sweeps on a GPU that was dramatically overqualified for the job. That's still the first section. The rest is what happened when I pointed all of it at one real model for a summer, with Nate Kim and our advisor, and found out where it stops working.
 
-## the idea
+## the short version of the spring
 
-A physics-informed neural network is trained to satisfy a differential equation, not just to fit points.
+A physics-informed neural network is trained to satisfy a differential equation, not just to fit points. You move the equation to one side so a correct solution makes it zero, evaluate that on the network's output at scattered points, and add whatever's left to the loss. Autodiff gives you the derivatives of the network with respect to its inputs for free. No mesh, no discretization, and the physics does the job data usually does, which is why you can fit with very few noisy observations.
 
-You take the PDE, move everything to one side so a correct solution makes it zero, and then evaluate that expression on the network's output at a bunch of scattered points in the domain. However far from zero you land is the residual, and you add it to the loss. Do the same for the boundary and initial conditions and you have a network that gets pulled toward being a solution rather than toward memorizing samples.
+The lessons that survived: the weight on the physics term relative to the data term changes everything, adaptive weighting by gradient magnitude beat fixed weights on everything I tried, Fourier feature embeddings fix the case where a plain MLP learns the smooth part and stalls on the oscillatory part, and L-BFGS after Adam converges better than either alone. Also that the GPU is not for the network, which is tiny. It's for running thirty experiments at once.
 
-The reason this is interesting is that the physics is doing the job data usually does. You can fit with very few observations, and noisy ones, because the equation rules out most of the functions that would otherwise explain your data.
+## the model
 
-Autodiff is what makes it practical. The derivatives in the PDE are derivatives of the network output with respect to its inputs, and `torch.autograd.grad` gives you those directly. Nothing gets discretized. There's no mesh. The network is the solution and its derivatives come for free, which is the part that felt like a trick the first time I wrote it out.
+Seven ordinary differential equations for a colorectal cancer signaling network. The states are β-catenin, APC, HOXA5, HOXA13, MYC, retinoic acid, and CYP26A1, and they form three loops: a pro-stemness loop where β-catenin drives MYC drives HOXA13 drives β-catenin, a differentiation loop where retinoic acid drives HOXA5 drives APC which degrades β-catenin, and a homeostasis loop where RA induces the enzyme that clears it. The full model our advisor had was 27 species in MATLAB. The first thing I did was port it to Python, `solve_ivp` with a stiff solver, and match the MATLAB trajectories to under 1% error, because I didn't want to be debugging a translation for the rest of the summer. The seven-state version is a reduction of that, down to the nodes the biology question actually turns on, nondimensionalized so one time unit is roughly an hour.
 
-## raissi
+Two knobs define disease. W is the WNT drive coming into the system and θP is how much functional APC you have left. Normal is (0.8, 1.0). Early adenoma is (1.0, 0.75). Advanced adenoma is (1.5, 0.5). Severe APC loss is (2.0, 0.25). Everything downstream, including a stemness score built from the states, follows from those two numbers plus 34 rate constants, Hill thresholds, and time scales. That's the 36 unknowns.
 
-Raissi, Perdikaris, and Karniadakis (2019) is the paper everyone starts from. It names the thing and sets up both problems: forward, where you have the equation and want the solution, and inverse, where you have messy observations of the solution and want the equation's parameters.
+The forward problem is: given all 36, simulate. The inverse problem is: given noisy time series from an experiment, recover the 36. The inverse problem is the one that matters, because the biology question is "how much APC has this tumor lost," and that's θP.
 
-The inverse case is what I keep coming back to. You're recovering a physical constant from data because measuring it directly is expensive or impossible, and the structure of the equation is what makes that recoverable at all.
+<Figure src="/writing/pinn-research/beta-catenin-fit.png" alt="β-catenin trajectories for four disease regimes, PINN reconstruction overlaid on the reference solution, with 150 noisy observations per regime and the ATRA treatment window shaded" caption="the forward fit is essentially perfect in all four regimes. this figure is from a run where a third of the recovered parameters were wrong." />
 
-I implemented it from scratch, and the training loop is genuinely short. Sample points, compute the residual through autograd, add the boundary loss, step.
+## the fit is not the answer
 
-What isn't short is getting it to converge. The weight on the physics term relative to the data term changes everything, and equal weighting almost never works. Too much weight on the residual and the network happily satisfies the PDE while ignoring your boundary conditions, which gives you a beautiful solution to a different problem. I lost a while to that before I understood what I was looking at.
+The first thing I learned this summer is that the picture above means much less than it looks like it means. The network reproduces the β-catenin curve to within the noise, and the parameters that produced that curve are off by 20% in θP and over 100% in a few of the rate constants. Lots of different parameter vectors produce the same trajectory. That isn't a PINN problem, it's the problem, and every method I tried this summer was a different way of asking how bad it is.
 
-## deepxde
+Early on we ran a two-parameter version, just W and θP with everything else known. W came back fine in every regime. θP came back within 1% in the normal regime and 142% off in severe APC loss. The reason is in the equation: APC degradation is `1 + δ(1 − θP)`, so at θP = 1 the δ term vanishes and θP and δ can't be told apart at all, and at low θP the system saturates, so large changes in θP barely move the curves. The parameter the model is most sensitive to overall turns out to be the least identifiable where it matters. That θP wall shows up in every method below.
 
-After doing it by hand I moved to DeepXDE, Lu Lu's library, which handles the geometry, the sampling, and the loss assembly so you can describe a problem in twenty lines.
+The full 36-parameter inverse problem, with an autodiff residual, got 6 of 36 within 10% in the normal regime. That's the baseline.
 
-It's very good for trying things. It also hides enough that I stopped understanding my own results, so I ended up in a pattern where I prototype in DeepXDE and then reimplement anything I want to make a claim about. Reading its source was worth more to me than using it, honestly. A lot of the sampling and weighting tricks in the literature are in there, written down properly.
+## the derivative problem
 
-## stiffness
+I spent a while assuming that was a data problem. It wasn't. Denser, cleaner observations made W worse, not better, going from 0.80 down to 0.50. Gradient matching on frozen networks gave 0.63. Something in the loss itself was biased.
 
-Vanilla PINNs fall apart on stiff systems, where some components move on microsecond timescales and others on hours. Chemical kinetics is the standard example.
+The residual in a standard PINN uses `dz/dt` computed by autodiff through the network. The network is a smooth function that passes close to the data, but its derivative is nobody's target and it's noisy in a way that doesn't average out. When you ask the optimizer to make `dz/dt − f(z, θ)` zero and `dz/dt` is wrong by a small systematic amount, the cheapest fix is to bend θ, not the network. You get a beautiful trajectory and a biased parameter.
 
-The failure is in the conditioning. Gradients from the fast components are enormous compared to the slow ones, so the optimizer spends everything it has on the fast dynamics and never makes progress on the rest. You watch the loss go down and the solution stay wrong.
+The fix is to not differentiate. Between adjacent collocation points the residual becomes the trapezoid rule: `[z(t₂) − z(t₁)] − ½Δt[f(z₂) + f(z₁)]`. It only uses values the network outputs, not their derivatives, and it's the same integral form as the ODE solver that generated the reference data in the first place. Same networks, same optimizer, same data, and the integral residual recovers twice as many of the 36 parameters as the autodiff version. Counted as parameters within 10% across the four regimes, 26 became 50. That's the one methodological result I'd defend from the summer. A classical least-squares ODE fit with a stiff solver is still a strong baseline on the same data, and the PINN's real advantage isn't a point estimate. It's that the same machinery extends to the Bayesian and hybrid versions below, which the classical fit doesn't.
 
-Ji et al.'s Stiff-PINN handles this with a curriculum: train on a short time window where the problem hasn't gotten stiff yet, then extend it. The network learns the fast behavior on a domain where that's most of what there is, and carries it forward.
+The other thing that helped was experimental design, and it helped less than I expected. We started with six conditions that differ only in the retinoic acid protocol: control, no ATRA, early ATRA, late ATRA, low dose, strong circadian. Every one of them enters the WNT/HOX/MYC sub-network through a single door, the RA to HOXA5 term, so the parameters behind that door don't move. Adding WNT pulse, WNT inhibition, MYC pulse and a combo condition helped the classical fit a lot and the PINN a little.
 
-I built a simplified version for a three-reaction combustion ODE. It clearly works, in that it solves problems the vanilla version doesn't. It's also much fussier. How fast you expand the window matters, and I found it by trial and error rather than by any principle, which I'm not thrilled about.
+## how many are identifiable, four ways
 
-## systems biology
+**Fisher information.** Finite-difference sensitivities of every state to every parameter at 200 time points across all ten conditions, 14,000 observations, `FIM = SᵀS/σ²`. The condition numbers are 10⁷ to 10¹⁹. Each regime has exactly one null direction, and it's the θP/δ direction: pure δ at normal, mixing into θP as WNT drive rises. Nine parameters are cleanly identifiable in every regime, all of them rate constants on the RA and HOX side. The first run of this script said all 36 were identifiable because I read the diagonal of a pseudoinverse; I rewrote it the same afternoon to look at null-space participation instead.
 
-Yazdani et al. apply the inverse setup to biological ODE systems, recovering rate parameters in gene regulatory networks and metabolic pathways from noisy time series.
+<Figure src="/writing/pinn-research/fim-spectra.png" alt="Fisher information eigenvalue spectra for four regimes, log scale, each collapsing by many orders of magnitude at the last eigenvalue" caption="one eigenvalue per regime falls off a cliff. that's the θP/δ direction. the gentle slope before it is what sloppiness looks like." />
 
-The result that got my attention is how little data it needs. The ODE constrains the space of possible trajectories so hard that a handful of observations pins down the parameters. Something purely data-driven would need orders of magnitude more, and would still have no reason to respect conservation.
+**Profile likelihoods.** Fix one parameter at a grid of values, refit the other 35, see whether the likelihood has a real minimum. Slow and the most honest of the four. Sixteen identifiable, six marginal, fourteen not.
 
-I reproduced their main result on a smaller enzyme kinetics model, then started making the observations worse on purpose, which is where I still am.
+**Sobol sensitivity.** Global variance decomposition with SALib: sample the parameter space, simulate, and ask what fraction of the variance in each state each parameter explains, alone and with interactions. θP dominates. On β-catenin its first-order and total-order indices are both about 0.8, meaning the model's output depends on it more than on anything else and barely through interactions. Which is exactly the parameter the Fisher matrix says you can't pin down at low APC. Sensitivity and identifiability are different questions, and this model is the cleanest example I've seen of a parameter scoring high on one and low on the other, because the response to θP saturates.
 
-## what the GPU is for
+Those three agree with each other, which is the point of running three. The fourth is the one that puts error bars on it.
 
-Not what I assumed. These networks are tiny, a few thousand parameters, and nothing is memory-bound. The bottleneck is the optimizer. L-BFGS converges better than Adam on most of these problems and parallelizes badly; Adam is fast per step and needs a lot of steps.
+**Bayesian PINN.** Freeze the networks from the integral-residual run, treat the 36 parameters as unknowns with log-normal priors, and run Hamiltonian Monte Carlo with the trapezoidal residual as the likelihood. The first run reported 36 of 36 identifiable with an effective sample size of three. I'd used the raw residual count, 279,930 terms, as if they were independent observations, which makes the likelihood absurdly sharp and the chain stuck. The right effective count is the number of actual observations, 2,800, scaled so reduced chi-squared is one at the MAP. After that fix the chains mix on some parameters and not others, and no run passes the gate I set for it (median ESS above 200 and credible intervals covering at least 33 of 36 truths), even at 3,000 draws and 48 leapfrog steps, which is three and a half hours per regime.
 
-What 96GB buys is running thirty experiments at once. I queue a sweep over learning rate, width, depth, sampling strategy, and weighting scheme, and read the results in the morning. That changes what questions you're willing to ask, more than it changes any single run.
+<Figure src="/writing/pinn-research/posterior-w-thetap.png" alt="Posterior marginals of W and θP for four regimes. W posteriors are tight and near truth except in severe APC loss; θP posteriors either flatten to the prior or spike at 1.0 far from the true value" caption="W is recoverable. θP isn't. in early adenoma the posterior is flat across the whole prior; in severe APC loss it's a spike at the wrong end." />
 
-A few things the sweeps have been consistent about. Adaptive loss weighting, the kind that rebalances terms by gradient magnitude during training (Wang et al., 2021), beat fixed weights on essentially everything I tried, and the gap widened with more competing loss terms. Fourier feature embeddings fixed the high-frequency problems, where a plain MLP learns the smooth part of the solution quickly and then stalls on the oscillatory part. And collocation sampling mattered more than I would have guessed: uniform random is a fine default, but concentrating points where the residual is large converges faster on anything with a sharp feature.
+The picture is worth more than the gate. W is tight in three regimes and biased low in the fourth. θP either reverts to the prior or converges confidently to 1.0 when the truth is 0.25, a z-score in the thousands. That's the same wall as the two-parameter experiment in June, now with error bars.
 
-## where this is going
+The forward Bayesian PINN, parameters known and the network weights sampled, worked. Predictive coverage 0.94 to 0.95 in every regime, with the caveat that you have to report the predictive band, not the reconstruction band. The reconstruction band alone under-covers at 0.56 to 0.73 because it only carries epistemic uncertainty and ignores the observation noise. I made that mistake first and the coverage number looked like a bug for a day.
 
-I'm trying to run the systems biology inverse problem on data that looks like real data. Irregular sampling, gaps, correlated noise instead of independent Gaussian. My guess is that the standard method degrades badly and that a better noise model plus putting collocation points near the actual observations recovers a lot of it, but that's a guess I haven't earned yet.
+<Figure src="/writing/pinn-research/forward-bayes-normal.png" alt="Seven-panel posterior predictive plot for the normal regime, one panel per state, posterior mean on truth with a 95% predictive band around 40 noisy observations" caption="forward bayesian pinn, normal regime. the band is calibrated: about 95% of held-out noisy points fall inside it." />
 
-The pattern I keep hitting in the literature is that results are on clean synthetic data. Which is reasonable, that's how you isolate a method. It also means the question of whether any of this survives contact with a real measurement is mostly still open.
+## hybrids
+
+The last thing we tried is replacing one Hill term with a small network and asking whether it learns the right shape. Universal differential equations, basically. The network is two layers of five tanh units, 46 weights, wrapped as `softplus(g(x)) · (1 − e^(−x/x₀))` so it's non-negative and zero at zero, trained jointly with the remaining 34 mechanistic parameters.
+
+Replacing the WNT-to-MYC term, `η b²/(κ² + b²)`, gives a learned curve within 6 to 10% of the true Hill function across the observed range. It also costs you the rest of the MYC equation. The basal MYC production constant comes back 30 to 50% wrong in every regime because the learned function absorbs it: the network can produce a constant offset at low β-catenin as easily as it can produce a curve, and nothing in the data distinguishes the two. Replacing the RA-to-HOXA5 term learns the right shape 10 to 25% low, and the zero-at-zero anchor never binds because the observed range doesn't get close to zero. The unconstrained version fits better.
+
+<Figure src="/writing/pinn-research/hybrid-wnt-myc.png" alt="Four panels comparing the learned neural term for WNT to MYC against the true Hill function across four regimes, NRMSE 6 to 10%, with the learned curve offset upward at low β-catenin" caption="the learned WNT → MYC term against the truth. the shape is right. the offset at the left edge is the basal production constant being absorbed." />
+
+The one hybrid that worked cleanly is the APC one, and it worked because of how it was trained. The unknown is the degradation multiplier as a function of APC loss, `f(1 − θP)`. Train on four regimes with θP at 1, 0.75, 0.5, 0.25, hold out three intermediate values, and the learned function reproduces the held-out truth to 0.12% with `f(0) = 0` exactly and monotone throughout. Then freeze it and recover θP for a new regime. Two stages, calibrate then infer, and the function is learned across regimes instead of within one.
+
+I'd summarize the hybrid results as: a network can learn a mechanism when you can vary the input to that mechanism across experiments, and when you can't, it learns whatever is cheapest, which is usually a constant that belongs to some other term.
+
+## compute
+
+A 64-core box with one GPU, float64 throughout. Four regimes in parallel take 56 of the cores. There's no scheduler; the queue is a shell script in tmux that watches for a DONE line and launches the next variant. A hybrid variant, three restarts across four regimes, is about an hour and forty-five minutes. Inverse HMC is three and a half hours per regime. One edge atlas run died after 2.8 GPU-hours to a bug that would have been caught by a two-minute dry run, which I now do.
+
+Things I got wrong along the way, for the record: the pseudoinverse Fisher matrix, the ESS-of-three posterior, a cosine learning-rate schedule that froze the physical parameters before the networks had converged, and a best-of-three restart rule that picks by physics loss and in two regimes threw away the start with better parameter recovery. A third-stage refinement step with frozen networks is in every run and has never changed a result.
+
+## paper
+
+The write-up is "A Reduced WNT–RA–HOX Model for Colorectal Cancer Stemness," with Nate and our advisor. It has the model, the nondimensionalization, the stemness score, and the three extensions above as sections. It was accepted to a SIAM conference in New York, and the project got a $6,000 internal research grant to keep going. Nate and I gave a 36-slide talk on it that took about 45 minutes, alternating.
 
 ---
 
-Six months in, I think PINNs are narrower than the enthusiasm suggests and genuinely good inside that range: known physics, not much data, and a need to be able to say why the answer looks like it does. Outside it, a solver or a plain neural network usually wins. Figuring out where that boundary sits has taught me more than any individual implementation.
+The old ending of this post said PINNs are narrower than the enthusiasm suggests and good inside that range: known physics, not much data, a need to explain the answer. I'd keep that and add one thing. On an inverse problem, the method you use to fit the parameters matters much less than whether the parameters are identifiable at all, and PINNs make it very easy to not notice, because the trajectory always looks right. The most useful things I built this summer were the ones that tell you when not to trust the fit.

@@ -33,11 +33,11 @@ export const projects: Project[] = [
   {
     name: "PINN Research",
     description:
-      "Six months of implementing physics-informed neural networks from scratch in PyTorch — reading Raissi, Lu, and Ji, running experiments on a 96GB GPU.",
+      "Parameter recovery for a 7-state colorectal cancer ODE model with physics-informed neural networks: an integral residual that doubled recovery over autodiff, Fisher information and Bayesian PINNs for identifiability, and neural-mechanistic hybrids. Paper with Nate Kim and our advisor.",
+    github: "https://github.com/aidxhxr/PINN-Research",
     slug: "pinn-research",
-    demo: "/",
-    date: "Feb 2026",
-    tags: ["Python", "PyTorch", "CUDA"],
+    date: "Jul 2026",
+    tags: ["Python", "PyTorch", "SciPy", "HMC"],
   },
   {
     name: "Breadcrumbs",

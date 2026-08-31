@@ -8,10 +8,10 @@ export type Post = {
 export const posts: Post[] = [
   {
     slug: "pinn-research",
-    title: "learning physics-informed neural networks",
-    date: "2026-06-01",
+    title: "physics-informed neural networks, six months later",
+    date: "2026-08-26",
     description:
-      "A CS066 final project that didn't stop at the semester. Reimplementing Raissi, Lu, and Ji in PyTorch, and finding out where PINNs actually work.",
+      "Thirty-six unknown parameters of a colorectal cancer model, a residual that doesn't differentiate, and three ways of finding out which parameters you can't recover.",
   },
   {
     slug: "swatgpt",
