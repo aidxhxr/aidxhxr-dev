@@ -1,0 +1,59 @@
+Silkroad Innovation Hub is a small VC in Menlo Park. This summer it started a for-profit arm that sells AI assistants to small businesses, and I'm one of ten fellows from Central Asia working on it with the CEO. The product is called Company Brain. I've been building most of the code.
+
+The pitch is not "a chatbot." Small business owners who aren't technical don't want to prompt anything. They want a thing that already knows the business: who the customers are, which invoice is late, what was decided in that conversation last Tuesday. The work of building that is what people are calling forward-deployed engineering. You go to each company, figure out what they'd actually use, and set it up for them, one dedicated server per client, branded as their own.
+
+## where the knowledge comes from
+
+The insight, if there is one, is that a small business already writes its knowledge down every day, in chat. It just never gets kept. Company Brain listens to every message that goes through the system and distills the durable parts into a Markdown vault with wikilinks, the way an Obsidian user would if they had infinite patience.
+
+It's built on a fork of LibreChat, because that gave us chat, streaming, history, and agents on day one. The brain is what's on top.
+
+Every message saved in either direction also gets appended, fire-and-forget, to a raw log collection. The reply path never waits on it. Each log entry carries a status machine, `pending` to `processing` to one of `skipped`, `awaiting_approval`, `applied`, `rejected`, or `failed`, with atomic claims so two workers can't grab the same entry, a quiet-window debounce so a burst of messages settles before anything looks at it, and an attempt cap so a broken entry can't loop forever. The log is the queue.
+
+A worker ticks every 15 seconds and runs each claimed entry through a gate:
+
+1. Dedup by retrieval first. If the entry's embedding is within 0.95 cosine of something already settled in the log, mark it `known` and spend zero tokens.
+2. Triage on a cheap model. Durable or ephemeral? Does it contain an action item? Does it look like a prompt injection? Anything flagged as injection stops here. Action items go to a to-do list.
+3. Distill on the good model, with the top three related vault notes in context. The output is one of `known`, `merge`, or `create`, with a note type from a fixed list and note content that's required to wikilink what it references.
+
+Both calls go through OpenRouter, which is what lets the two stages use different models. Triage sees every message and runs on something cheap. Distillation only sees what survives triage and runs on something good. Splitting it that way, instead of sending everything to one model, cut LLM spend by about a third, and it's the reason the per-client economics work at all.
+
+Both LLM steps are tool-less and treat message content strictly as data. The model is told to read it, not to do it. That plus the injection triage is most of the defense against someone texting the business "ignore previous instructions."
+
+Merges and creates don't write to the vault by default. They park as `awaiting_approval`, and a person clicks approve or reject in a queue. I expect that to feel like friction for about a month and then to be the reason a client trusts it.
+
+## getting it back out
+
+The vault is only useful if the agent reads it. Every agent spec has a `brain_search` tool, and the retriever indexes the vault plus a 90-day window of the raw log, capped at 20,000 chunks. Vectors live in Postgres with pgvector, next to nothing else, because the vault is the one thing that has to outlive any particular version of the app. There's a lexical bonus on top of cosine so exact names win. A 12-question eval gets 11 right. The first version took 13 seconds per turn and it's now about 3, which was almost entirely a matter of not re-embedding the vault on every call.
+
+The vault has a graph. Nodes are notes, sized by degree, with topic, fact, and tag satellites hanging off them; edges are wikilinks. It's a d3-force layout with hover, search, and a markdown reader on the side. Business owners like it more than any other screen, I think because it's the first time they've seen their own business as a shape.
+
+## channels
+
+The web UI isn't where clients live. They live in iMessage and email.
+
+iMessage is handled by polling the `chat.db` SQLite file on a Mac, which is the only way to read it without Apple's permission, and it's the reason a Linux VPS can't run that piece yet. Replies carry a 🧠 marker so the pipeline can tell its own messages from the owner's, and the agent only ever sends to the owner. Gmail goes through the API with read and compose scopes, syncs by history ID, pre-filters bulk mail, and can draft replies. Drafts to any domain not on an allowlist get refused in three separate layers, because the failure mode of an AI that can email your customers is not one you want to discover in production.
+
+Both channels come into the app through a gateway endpoint. A service token gets exchanged for a five-minute owner JWT, the request loops back into the normal chat route, threads are mapped so a conversation in iMessage stays one conversation, and there's a 12-turn budget and a 90-second timeout per reply.
+
+There's a kill switch. "Pause everything" stops both channels and the worker.
+
+## guardrails
+
+I spent more time here than on the pipeline, which I think is the right ratio for something that texts people on your behalf.
+
+An hourly budget monitor compares spend against an expected monthly figure and warns at 1×, 2×, 3×, with an optional hard pause. Every consequential action, fifteen kinds, lands in a hash-chained audit log, and sending a draft is fail-closed: if the audit write fails, the send doesn't happen. Turn caps on agents and sub-agents. And a trust ramp: a workflow starts in a mode where every output needs approval, and graduates to auto-send only after a run of approved outputs, which the owner can see and reset.
+
+Two scheduled workflows run inside the worker right now. A morning brief at 7:00 and a weekly invoice chase on Monday at 8:00 that finds notes of type `invoice` past due and drafts follow-ups. The dashboard's finance charts are sample data and say so on the tile. The to-dos, budget, approvals, activity, and workflow health are live.
+
+## white-labeling
+
+A new client is a script. It scaffolds a vault directory, swaps the demo company's name out of the agent prompts, generates the service token and the env lines, and the rest is theme tokens and a logo swap. Deployment is a compose file with the app, the worker, the Gmail poller, and the databases, pm2 for process management, nightly backups with 14-day retention, and a health endpoint that the brief checks before it runs. I've provisioned fifteen-odd Linux VPSs this way. The script takes minutes; the client takes hours. I've spent more than forty of them sitting next to business owners getting their history in, their channels connected, and their approval queue explained, and every one of those hours changed something in the product.
+
+The demo vault is 28 notes about Anduril, compiled from public web pages, plus two synthetic invoices. It's a stand-in so the graph has something to show before a client has any history.
+
+## what's not done
+
+The first instance ran on my own laptop against my own message history. That's how the injection triage and the dedup thresholds got tuned, and it's why I trust them a little. It now runs on client servers, branded as theirs.
+
+Open problems, in order of how much they bother me. iMessage needs a Mac, so a Linux VPS can't be the whole deployment for a client who lives in iMessage. Deleting a note doesn't delete its vectors. And the approval queue is still the bottleneck: the brain proposes faster than an owner reviews, and I don't yet have a good answer for what happens to the backlog. That's the next thing.

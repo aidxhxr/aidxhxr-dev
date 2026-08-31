@@ -7,6 +7,13 @@ export type Post = {
 
 export const posts: Post[] = [
   {
+    slug: "company-brain",
+    title: "company brain: a business's chats, distilled into a vault",
+    date: "2026-08-30",
+    description:
+      "A LibreChat fork that logs every message, triages it on a cheap model, distills it into wikilinked notes, and only writes with approval. Built for small businesses, dogfooded on my own texts.",
+  },
+  {
     slug: "pinn-research",
     title: "physics-informed neural networks, six months later",
     date: "2026-08-26",

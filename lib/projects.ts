@@ -11,6 +11,15 @@ export type Project = {
 
 export const projects: Project[] = [
   {
+    name: "Company Brain",
+    description:
+      "AI assistant for small businesses, built with Silkroad Innovation Hub. Every chat gets triaged and distilled into a wikilinked Markdown vault behind an approval queue; reaches owners over iMessage and email with a budget monitor, audit log, and trust ramp in front of anything that sends.",
+    github: "https://github.com/Silkroad-Innovation-Hub/FDE-company-brain",
+    slug: "company-brain",
+    date: "Aug 2026",
+    tags: ["TypeScript", "React", "MongoDB", "LibreChat", "d3"],
+  },
+  {
     name: "GrokEye",
     description:
       "Voice-driven AR coaching over a live camera feed, top 6 at xAI's Grokathon. Web Speech in, Grok 4.5 for vision and answers, xAI TTS out, three hedged requests to make box calls fast, and a dependency-free TypeScript tracker to keep them on the object.",
@@ -44,7 +53,6 @@ export const projects: Project[] = [
     description:
       "Social platform built around intentional sharing. Five items a day, 24-hour expiry, group-based feeds — designed against engagement maximization.",
     slug: "breadcrumbs",
-    demo: "/",
     date: "Dec 2025",
     tags: ["TypeScript", "Next.js", "Postgres"],
   },
@@ -54,7 +62,6 @@ export const projects: Project[] = [
       "Task and project management platform for student organizations. Full-stack — Next.js, REST API, Postgres.",
     github: "https://github.com/aidxhxr/tickflow",
     slug: "building-tickflow",
-    demo: "/",
     date: "Oct 2025",
     tags: ["TypeScript", "Next.js", "Postgres"],
   },

@@ -5,6 +5,7 @@ import { projects } from "@/lib/projects";
 import { notFound } from "next/navigation";
 import Breadcrumbs from "@/content/writing/breadcrumbs.mdx";
 import BuildingTickflow from "@/content/writing/building-tickflow.mdx";
+import CompanyBrain from "@/content/writing/company-brain.mdx";
 import Grokeye from "@/content/writing/grokeye.mdx";
 import PinnResearch from "@/content/writing/pinn-research.mdx";
 import Swatgpt from "@/content/writing/swatgpt.mdx";
@@ -12,6 +13,7 @@ import Swatgpt from "@/content/writing/swatgpt.mdx";
 const postComponents: Record<string, React.ComponentType> = {
   breadcrumbs: Breadcrumbs,
   "building-tickflow": BuildingTickflow,
+  "company-brain": CompanyBrain,
   grokeye: Grokeye,
   "pinn-research": PinnResearch,
   swatgpt: Swatgpt,
