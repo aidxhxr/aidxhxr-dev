@@ -50,17 +50,6 @@ const experience = [
     ],
   },
   {
-    company: "swarthmore college — icpc",
-    role: "lead competitive programmer",
-    period: "sept 2025 – present",
-    location: "swarthmore, pa",
-    bullets: [
-      "lead the Swarthmore ICPC club of 20 as the highest-rated member, organizing practices and contests",
-      "run weekly training by constructing 5-hour, 8-problem contests with 2-hour editorials for div-2 teams",
-      "solved 1,500+ Codeforces problems over 4+ years — expert-level C++ with STL containers, iterators, templates, and custom data structures",
-    ],
-  },
-  {
     company: "colgate university",
     role: "algorithmic research",
     period: "apr 2024 – mar 2025",
