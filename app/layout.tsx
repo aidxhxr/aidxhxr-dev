@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import "./research.css";
+import "./work.css";
 import Nav from "@/components/nav";
 import PixelCursor from "@/components/pixel-cursor";
 import { Providers } from "@/components/providers";
@@ -35,9 +36,10 @@ export default function RootLayout({
     >
       <body className="min-h-screen flex flex-col">
         <Providers>
+          <a className="site-skip-link" href="#main-content">Skip to content</a>
           <PixelCursor />
           <Nav />
-          <main className="flex-1">{children}</main>
+          <main id="main-content" className="flex-1">{children}</main>
         </Providers>
       </body>
     </html>

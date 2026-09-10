@@ -1,59 +1,139 @@
-Silkroad Innovation Hub is a small VC in Menlo Park. This summer it started a for-profit arm that sells AI assistants to small businesses, and I'm one of ten fellows from Central Asia working on it with the CEO. The product is called Company Brain. I've been building most of the code.
+A small business already has a lot of its knowledge written down. It is in email threads, text messages, overdue invoices, and the notes somebody took after a call. The difficult part is making that information useful without giving the owner another system to maintain.
 
-The pitch is not "a chatbot." Small business owners who aren't technical don't want to prompt anything. They want a thing that already knows the business: who the customers are, which invoice is late, what was decided in that conversation last Tuesday. The work of building that is what people are calling forward-deployed engineering. You go to each company, figure out what they'd actually use, and set it up for them, one dedicated server per client, branded as their own.
+Company Brain is the part of my work at Silkroad Innovation Hub that tries to close that gap. The broader product is a managed AI assistant, configured for an individual business. My engineering work has been turning a LibreChat fork into something that can remember useful information, answer across channels, and propose work the owner can inspect.
 
-## where the knowledge comes from
+This is a build account, through the September 3, 2026 repository snapshot. It includes working code, small demo evaluations, and unfinished pieces. The most useful progress came from fairly ordinary problems: deciding what belongs in memory, keeping three interfaces consistent, and making a text that says “send” mean exactly one thing.
 
-The insight, if there is one, is that a small business already writes its knowledge down every day, in chat. It just never gets kept. Company Brain listens to every message that goes through the system and distills the durable parts into a Markdown vault with wikilinks, the way an Obsidian user would if they had infinite patience.
+## Starting with a working chat application
 
-It's built on a fork of LibreChat, because that gave us chat, streaming, history, and agents on day one. The brain is what's on top.
+I started from LibreChat because it already provided streaming replies, conversation history, authentication, and an agent execution layer. Rebuilding those would have delayed the parts specific to a business assistant.
 
-Every message saved in either direction also gets appended, fire-and-forget, to a raw log collection. The reply path never waits on it. Each log entry carries a status machine, `pending` to `processing` to one of `skipped`, `awaiting_approval`, `applied`, `rejected`, or `failed`, with atomic claims so two workers can't grab the same entry, a quiet-window debounce so a burst of messages settles before anything looks at it, and an attempt cap so a broken entry can't loop forever. The log is the queue.
+The first commits in August added a dashboard, a to-do list, an approval queue, and a graph of company notes. There were three modes: ordinary chat, grounded search over the company brain, and a more deliberate research mode. The product name changed from Hermes to Silkroad during this first round.
 
-A worker ticks every 15 seconds and runs each claimed entry through a gate:
+The original architecture document described a separate service owning memory in Postgres and pgvector. That was a plan. The implementation grew inside the fork, using MongoDB for application records and vectors, with Markdown files as the curated knowledge store. Keeping those distinct matters: a design document can describe a sensible destination without describing the system that actually runs.
 
-1. Dedup by retrieval first. If the entry's embedding is within 0.95 cosine of something already settled in the log, mark it `known` and spend zero tokens.
-2. Triage on a cheap model. Durable or ephemeral? Does it contain an action item? Does it look like a prompt injection? Anything flagged as injection stops here. Action items go to a to-do list.
-3. Distill on the good model, with the top three related vault notes in context. The output is one of `known`, `merge`, or `create`, with a note type from a fixed list and note content that's required to wikilink what it references.
+| Stage | What changed | What it made possible |
+| --- | --- | --- |
+| August 13 | Dashboard, linked notes, approvals, background ingestion | A visible memory system with proposed edits |
+| August 30 | Retrieval, shared channel gateway, workflows, deployment tooling | The same business context across chat, email, and texts |
+| September 2 | Local iMessage echo fixes and Gmail setup notes | Fewer transport surprises in live testing |
+| September 3 | Photon transport, compact context snapshots, email decisions over text | A shorter path from an owner's question to an answer or draft |
 
-Both calls go through OpenRouter, which is what lets the two stages use different models. Triage sees every message and runs on something cheap. Distillation only sees what survives triage and runs on something good. Splitting it that way, instead of sending everything to one model, cut LLM spend by about a third, and it's the reason the per-client economics work at all.
+## Two kinds of memory
 
-Both LLM steps are tool-less and treat message content strictly as data. The model is told to read it, not to do it. That plus the injection triage is most of the defense against someone texting the business "ignore previous instructions."
+The central design separates a raw log from a curated vault.
 
-Merges and creates don't write to the vault by default. They park as `awaiting_approval`, and a person clicks approve or reject in a queue. I expect that to feel like friction for about a month and then to be the reason a client trusts it.
+The raw log records what entered the system, where it came from, and what happened during processing. It preserves the original message even when that message does not deserve a permanent note. The vault contains the smaller set of facts, relationships, and decisions that should be useful later.
 
-## getting it back out
+A simplified flow looks like this:
 
-The vault is only useful if the agent reads it. Every agent spec has a `brain_search` tool, and the retriever indexes the vault plus a 90-day window of the raw log, capped at 20,000 chunks. Vectors live in Postgres with pgvector, next to nothing else, because the vault is the one thing that has to outlive any particular version of the app. There's a lexical bonus on top of cosine so exact names win. A 12-question eval gets 11 right. The first version took 13 seconds per turn and it's now about 3, which was almost entirely a matter of not re-embedding the vault on every call.
+```text
+Web chat / email / iMessage
+           ↓
+     Raw message log
+           ↓
+ Duplicate check → triage → distillation
+           ↓
+     Proposed note or to-do
+           ↓
+      Owner approval
+           ↓
+   Markdown vault + search index
+```
 
-The vault has a graph. Nodes are notes, sized by degree, with topic, fact, and tag satellites hanging off them; edges are wikilinks. It's a d3-force layout with hover, search, and a markdown reader on the side. Business owners like it more than any other screen, I think because it's the first time they've seen their own business as a shape.
+The chat save wrapper appends to the log without making the reply wait for that append. A separate worker processes the queue, with a default 15-second interval and quiet window. Atomic claims keep workers from taking the same item, stale processing entries can be requeued, and an attempt cap prevents endless retries.
 
-## channels
+That separation is a responsiveness decision, with a tradeoff. Finishing a chat reply does not itself prove that its memory write succeeded. Failures need to remain visible in the queue and logs; a friendly response is not an ingestion receipt.
 
-The web UI isn't where clients live. They live in iMessage and email.
+The gate first checks for a near-duplicate already resolved as applied or known. Its configurable threshold defaults to 0.95 on the retriever's score. That avoids another triage and distillation call, although retrieval can still incur embedding work. Calling this “zero-cost deduplication” would be inaccurate.
 
-iMessage is handled by polling the `chat.db` SQLite file on a Mac, which is the only way to read it without Apple's permission, and it's the reason a Linux VPS can't run that piece yet. Replies carry a 🧠 marker so the pipeline can tell its own messages from the owner's, and the agent only ever sends to the owner. Gmail goes through the API with read and compose scopes, syncs by history ID, pre-filters bulk mail, and can draft replies. Drafts to any domain not on an allowlist get refused in three separate layers, because the failure mode of an AI that can email your customers is not one you want to discover in production.
+Triage then decides whether the message contains durable information, extracts possible action items, and flags instructions that appear directed at the AI. A flagged entry stops before distillation. Otherwise, a stronger model receives relevant existing notes and chooses whether the information is already known, should update a note, or should create one.
 
-Both channels come into the app through a gateway endpoint. A service token gets exchanged for a five-minute owner JWT, the request loops back into the normal chat route, threads are mapped so a conversation in iMessage stays one conversation, and there's a 12-turn budget and a 90-second timeout per reply.
+The default split uses a smaller model for triage and a larger model for distillation. The implementation calls an OpenAI-compatible client with OpenAI as its default endpoint; OpenRouter appears in earlier product planning. I do not have a controlled cost comparison supporting a percentage saving, so the defensible claim is narrower: expensive distillation only runs on the messages that survive earlier checks.
 
-There's a kill switch. "Pause everything" stops both channels and the worker.
+Both model calls have no tools. Proposed notes and extracted to-dos require approval by default. This reduces the consequences of a mistaken extraction, but a classifier and a prompt are not a proof that hostile content can never influence a later answer.
 
-## guardrails
+## Why the vault is plain Markdown
 
-I spent more time here than on the pipeline, which I think is the right ratio for something that texts people on your behalf.
+A note has a type, optional structured fields, and links to other notes. The files are readable without the application. That makes an incorrect fact easier to inspect and makes memory less dependent on one database schema or chat interface.
 
-An hourly budget monitor compares spend against an expected monthly figure and warns at 1×, 2×, 3×, with an optional hard pause. Every consequential action, fifteen kinds, lands in a hash-chained audit log, and sending a draft is fail-closed: if the audit write fails, the send doesn't happen. Turn caps on agents and sub-agents. And a trust ramp: a workflow starts in a mode where every output needs approval, and graduates to auto-send only after a run of approved outputs, which the owner can see and reset.
+The graph explorer is a second view of those files. It uses a force layout: notes become nodes, wikilinks become edges, and headings, highlighted facts, and tags supply smaller satellite nodes. Searching or selecting a node opens its note in a reader.
 
-Two scheduled workflows run inside the worker right now. A morning brief at 7:00 and a weekly invoice chase on Monday at 8:00 that finds notes of type `invoice` past due and drafts follow-ups. The dashboard's finance charts are sample data and say so on the tile. The to-dos, budget, approvals, activity, and workflow health are live.
+I like this because it gives the owner something concrete to inspect. “The assistant remembers your business” is vague. A note with a visible body and links can be reviewed and corrected.
 
-## white-labeling
+The demo vault uses public information about Anduril, plus synthetic invoices for workflow testing. It is demonstration material, not evidence that Anduril uses the product. The graph shows connections encoded in notes; it does not establish that every relationship or extracted fact is correct.
 
-A new client is a script. It scaffolds a vault directory, swaps the demo company's name out of the agent prompts, generates the service token and the env lines, and the rest is theme tokens and a logo swap. Deployment is a compose file with the app, the worker, the Gmail poller, and the databases, pm2 for process management, nightly backups with 14-day retention, and a health endpoint that the brief checks before it runs. I've provisioned fifteen-odd Linux VPSs this way. The script takes minutes; the client takes hours. I've spent more than forty of them sitting next to business owners getting their history in, their channels connected, and their approval queue explained, and every one of those hours changed something in the product.
+## Getting useful information back out
 
-The demo vault is 28 notes about Anduril, compiled from public web pages, plus two synthetic invoices. It's a stand-in so the graph has something to show before a client has any history.
+Memory ingestion and question answering need the same source of truth. Otherwise, the dashboard can show one fact while a channel assistant answers from an old prompt.
 
-## what's not done
+The August retrieval implementation searches both vault notes and recent raw messages. Embeddings are stored in MongoDB's `brainvectors` collection, loaded into an in-process cache, and ranked by cosine similarity with a small lexical bonus for matching titles or senders. Defaults include a 90-day raw-log window and a 20,000-vector cache cap. Those are operating bounds, not demonstrated scaling results.
 
-The first instance ran on my own laptop against my own message history. That's how the injection triage and the dedup thresholds got tuned, and it's why I trust them a little. It now runs on client servers, branded as theirs.
+Content hashes avoid re-embedding unchanged note chunks. The worker indexes notes it writes, and the API warms the index on startup. A `brain_search` tool makes retrieval available to the chat modes instead of maintaining a hand-written list of company facts in their prompts.
 
-Open problems, in order of how much they bother me. iMessage needs a Mac, so a Linux VPS can't be the whole deployment for a client who lives in iMessage. Deleting a note doesn't delete its vectors. And the approval queue is still the bottleneck: the brain proposes faster than an owner reviews, and I don't yet have a good answer for what happens to the backlog. That's the next thing.
+A twelve-question demo evaluation recorded the expected note in the top three results for eleven questions. The miss involved a question about founders retrieving a different relevant note. This is a small retrieval check over a known vault. It does not mean the assistant answered eleven questions correctly, and it does not measure general reliability on a new business.
+
+One unresolved edge is deletion. The retriever has an explicit removal operation, but vault synchronization does not automatically discover every note deleted from disk. Deleting a file and deleting every searchable representation of that file need to be one coherent operation.
+
+## Making the same assistant available over text
+
+The channel gateway routes external questions through the application's normal agent path. A service credential authenticates the connector, a short-lived owner token supplies the application identity, and each external thread maps to a conversation. This keeps channel history inspectable in the web interface.
+
+Channel runs have a default twelve-step budget and a ninety-second timeout. Later, I gave them a dedicated prompt and configuration without specialist-agent fan-out. A question arriving as a text usually needs a short answer, not a multi-agent report.
+
+The first iMessage connector polled the local Messages database on a Mac. That was useful for development and passive ingestion, but it carried platform-specific problems. A September fix handles duplicate copies in self-chats so one owner message does not trigger repeated answers.
+
+The later Photon connector gives the assistant a cloud iMessage transport. Its code rejects strangers and group chats before logging, checks the owner again before sending, and records provider message IDs for deduplication. The Mac connector remains an optional ingestion path; it is no longer the only way to support outbound iMessage from a Linux deployment.
+
+There is still a delivery limitation. The stream processor exits when its input stream ends so the process supervisor can restart it. The documentation accepts a possible gap for messages arriving during downtime; it does not establish durable replay from the provider.
+
+## The latency work was mostly about the path
+
+The development notes record an initial channel answer taking about thirteen seconds, and a later smoke test around three seconds after using the dedicated channel configuration and warming retrieval. Those observations are useful for finding friction, but they are not a latency distribution from production traffic.
+
+The next change removed a tool round-trip for common questions. A compact snapshot adds open to-dos, headline facts from the notes, and recent inbox summaries directly to the channel prompt. The assistant can answer a simple question from that context and search when it needs more detail.
+
+September notes report examples around 0.7–1.1 seconds for simple factual questions, roughly two seconds for an inbox summary, and 3.3 seconds to draft an email. Different questions and configurations make these examples unsuitable for a single speedup claim.
+
+The snapshot also creates new responsibilities. Its size grows with the vault. Cached inbox context can be stale. Most significantly, the current snapshot includes sample dashboard finance figures until real integrations replace them. The code is a working demo, but demo context must remain clearly separated from a client's actual financial state.
+
+## Draft first, then decide
+
+Email makes the boundary between proposing and acting especially clear.
+
+The Gmail connector performs incremental synchronization using history IDs and identifies bulk mail before expensive processing. An `email_draft` tool creates a Gmail draft and an approval record. It does not send the message itself.
+
+The owner can inspect the approval in the dashboard or text a short decision. The September implementation recognizes commands such as “send” and “scrap it” and applies the decision to the latest pending draft. Both routes use the same draft-decision service.
+
+Recipient policy allows the owner's address, explicitly configured domains, and configured contacts. Before sending, the service reads the draft's current recipients and checks them again. That matters because a Gmail draft can change after the assistant originally created it.
+
+The send path also requires a durable audit entry before calling Gmail. If that audit write fails, the send does not proceed. The audit distinguishes the pending action from its later success or failure.
+
+The light version deliberately leaves a difficult interaction unfinished: choosing among several pending drafts. “Send it” is convenient only when “it” is unambiguous. Threaded replies and reading a specific email are also described as follow-up work, rather than capabilities I can claim are complete.
+
+## Work that happens without a prompt
+
+Two scheduled workflows extend the assistant beyond answering questions. A morning brief summarizes available tasks and operational context. An invoice chase scans vault notes of type `invoice` and prepares follow-ups for overdue items.
+
+The invoice source is currently the vault, not a completed QuickBooks or Mercury integration. The finance dashboard is sample-backed; live components include tasks, approvals, budget status, activity, and process health. Keeping those distinctions visible is part of making the product understandable.
+
+Per-workflow policies let the owner see and reset approval history and control whether a workflow is enabled or eligible for automatic sending. A shared pause command stops channel responses and background processing. An hourly budget monitor can warn at multiples of an expected monthly spend, with hard pause separately configurable.
+
+Deployment tooling prepares a client vault and configuration, with Compose or pm2 supervising the API, worker, connectors, and database. A health endpoint exposes heartbeats, and the repository includes MongoDB backup tooling. These are useful operational pieces; their existence alone does not establish a fleet size, uptime record, or successful restore history.
+
+## What this changed about how I build
+
+The most interesting work was not choosing a model. It was making the system's intermediate states visible: this message was received, this fact was proposed, this draft is waiting, this connector is alive.
+
+The next improvements follow from those states. Memory deletion needs to reach the index. Approval backlogs need a review experience that stays usable as volume increases. Text decisions need explicit draft identity once several drafts exist. Evaluation needs more than a dozen familiar questions, including corrections, ambiguous requests, and interrupted channel sessions.
+
+I am still learning where a useful prototype ends and a dependable service begins. This project made that boundary concrete: an answer can sound right while its context is stale, and a successful demo can conceal a missing recovery path. Building the surrounding workflow is how I have started addressing that gap.
+
+## Sources and scope
+
+This account is grounded in the [Company Brain repository at commit `8a1cf6de`](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/tree/8a1cf6dec114b7da5b4ff1c9cd7d73b0c3e67c14), dated September 3, 2026. Historical timings and the retrieval result are recorded development observations, not measurements rerun for this article. No client messages, credentials, or private business records are reproduced.
+
+- [Build history and implementation roadmap](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/context/roadmap.md), including the difference between the planned separate service and the implementation in the fork.
+- [Ingestion design and dated implementation notes](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/context/ingestion.md), alongside the [worker](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/packages/api/src/brain/worker.ts) and [retrieval implementation](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/packages/api/src/brain/retrieval/index.ts).
+- [Channel evolution and live-test notes](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/context/channels.md), [snapshot construction](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/packages/api/src/brain/snapshot.ts), and [draft decisions](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/packages/api/src/channels/approval.ts).
+- [Retrieval evaluation cases](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/config/brain-eval.js), [sample dashboard context](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/packages/api/src/brain/dashboard.ts), and [deployment runbook](https://github.com/Silkroad-Innovation-Hub/FDE-company-brain/blob/8a1cf6de/deploy/README.md).

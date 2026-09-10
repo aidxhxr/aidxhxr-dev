@@ -1,62 +1,125 @@
-GrokEye was a Grokathon project. xAI ran the hackathon in August, I ended up on a team with Derek and Dan, two engineers from Anduril, and in about a day of commits we built a thing that watches you work through a camera and talks back. We placed top 6.
+GrokEye started with a direct question: could an assistant help with something in your hands without making you put it down? Pointing at the right connector felt more useful than another paragraph describing where the connector might be.
 
-<YouTube id="lC4oP8kb9KE" title="GrokEye demo" caption="the demo. derek recorded it the morning after." />
+I built it with Derek and Dan at xAI's August 2026 Grokathon, where we placed in the top six. Most of the implementation landed on August 8; the demo and README followed the next day. The result was a browser app that could watch a camera or a prerecorded clip, answer aloud, highlight objects, show instructions, and review a step.
 
-## what it does
+The hard part was agreeing about *what was happening now*. A good answer delivered after the object moves is a bad interaction. My work concentrated on intent routing, grounding, tracking, and connecting a voice turn to the video.
 
-You're doing something with your hands: tamping espresso, seating a GPU, screwing legs onto an IKEA desk. GrokEye plays that feed in the browser, listens the whole time, and when you ask "where does this connect" it draws a box on the slot, an arrow from the thing in your hand to the slot, and says the answer out loud. Ask for the manual and it pulls up the steps. Ask "how did I do" and it looks back over the last few seconds and tells you what you skipped.
+<YouTube id="lC4oP8kb9KE" title="GrokEye demo" caption="The GrokEye walkthrough. The distinction between live inference and authored demo sequences is explained below." />
 
-The stack is plain. React and Vite on the front, an Express server, and `grok-4.5` for everything that needs a brain: chat, finding objects in a frame, web search, checking your work. Speech in is Chrome's Web Speech API, which is free and always on. Speech out is xAI's TTS with a voice called Carina. No speech key, and no CV library anywhere in the browser.
+## What we built
+
+A video player holds object boxes, connection arrows, a manual, and a tools panel. You can ask where a part connects or how you did on a step. Webcam mode provides a live source; the presentation mostly used a small catalog of known clips.
+
+React and Vite run the client. An Express server calls the model and speech services. The checked-in configuration uses `grok-4.5` for answers, visual grounding, and several review paths, with xAI's Carina voice for speech output. Speech recognition comes from the browser's Web Speech API. There is no separate speech-recognition API key in the app; that does not mean recognition is necessarily performed locally.
+
+The components divide the problem along practical boundaries:
+
+| Component | Responsibility | Why it is separate |
+| --- | --- | --- |
+| Voice listener and router | Turn speech into an action | A request for the next page does not need visual reasoning |
+| Answer endpoint | Produce a short spoken explanation | Speech should not wait for every overlay |
+| Grounding cascade | Locate the requested object or endpoints | Coordinates need a different output contract from prose |
+| Browser tracker | Move the last box with the video | Calling a large model for every frame would be impractical |
+| Manual and review paths | Supply instructions and assess a step | Describing an action and checking it are different jobs |
 
 <FigureRow>
-  <Figure src="/writing/grokeye/ikea.jpg" alt="GrokEye showing page 10 of the IKEA MICKE manual next to a first-person view of the desk frame" caption="the manual panel over the IKEA clip, page 10 of 28." />
-  <Figure src="/writing/grokeye/coffee.jpg" alt="GrokEye showing an espresso prep manual, step 2 of 4, over a top-down view of a grinder and portafilter" caption="espresso prep. the source line in this screenshot was hardcoded and got removed later that night." />
+  <Figure src="/writing/grokeye/ikea.jpg" alt="GrokEye with the IKEA MICKE assembly manual beside a first-person desk assembly clip" caption="The IKEA manual alongside the clip. Keeping the reference visible avoids turning every instruction into another spoken exchange." width={1600} height={894} />
+  <Figure src="/writing/grokeye/coffee.jpg" alt="GrokEye showing an espresso preparation guide over a view of a grinder and portafilter" caption="An early espresso interface. The source line in this screenshot was hardcoded and was later removed; it is not evidence of a retrieved source." width={1600} height={878} />
 </FigureRow>
 
-## a turn
+## One voice turn, several clocks
 
-Any speech starts a turn. There's no wake word to get in. There is one to interrupt, because Chrome only allows one recognizer at a time and we needed a second one running while Grok was talking so you could say "hey grok" over it. STT hears that as grok, groc, grock, grawk, greg, brook, brock or crock, so the regex matches all eight.
+Ordinary speech starts a request without a wake word. At speech onset, the client captures a frame and its media timestamp. After about 1.6 seconds of silence, it submits the utterance. Capturing at the beginning matters: by the time someone finishes saying “where does this go?”, their hand may have left the frame.
 
-The moment you start talking, the client grabs a frame, notes the media time, and ducks the video's volume. When you stop for 1.6 seconds, the transcript goes through a pile of regexes before it goes anywhere near a model: is this a highlight question, does it need to see the screen, is it a web fact, is it a manual command, is it "next step". I wrote most of that router. It isn't clever, it's just a lot of cases, and it's a big part of why the demo felt fast. Half the turns never touched the network for anything except the answer.
+The router first checks whether the utterance means a local action, a manual request, a visual question, a web query, or a review. It is mostly rules and regular expressions. The command space was small, and mistakes were easy to reproduce. “Next step” should advance the current instructions, not initiate another open-ended conversation.
 
-Then two requests go out at once. `/api/chat` gets the question plus up to three context frames and returns the spoken reply. `/api/labels` gets one high-detail frame and returns JSON boxes. The reply goes straight to TTS so the boxes are painting while the audio is still encoding.
+For a typical highlight question, the spoken answer and the label request run in parallel. The label path returns structured coordinates; the answer path returns prose for speech synthesis. Whichever finishes first can begin contributing to the interface. We were trying to overlap useful work instead of waiting for one large response containing everything.
 
-## the part that took 15 to 40 seconds
+Retrospective questions get different visual context. The frame selector can add the frame nearest roughly two seconds before speech onset and the highest-motion frame in the recent history. It keeps at most three distinct views, ordered in time, and excludes frames after the question began. A normal “where is it?” question can stay with one image. “Did I just do that correctly?” needs evidence of the action, not only the resting pose afterward.
 
-The first version of the box call was unusable. Grok would spend 600 to 1,500 hidden reasoning tokens deciding where a PCIe slot was, which took 15 to 40 seconds, and the boxes were no better for it. Setting `reasoning_effort` to low mostly fixed that. When the model skips reasoning it answers in about two seconds. When it doesn't, it's nine to seventeen, and you can't tell in advance which you're going to get.
+Interrupting speech was another small but important detail. While the assistant speaks, a wake-phrase listener can stop it. The recognition code accepts several spellings of “Grok,” including “grock,” “greg,” and “brook.” The ordinary listener and interrupt listener have to hand control back correctly; simply mounting both does not give reliable simultaneous recognition.
 
-Two things fixed the rest. The first is a cascade in front of Grok. Anything with a distinctive color, the salmon in the sushi clip, gets found by an HSV blob detector on the device in a few milliseconds. Anything with a name YOLO knows goes to a local YOLO-World detector behind FastAPI. Only what's left goes to Grok. The cheap tiers answer instantly when they can, and Grok only gets the questions that need it.
+## Making visual grounding fast enough
 
-The second is hedging. The server fires three identical requests and takes the first one that parses. Not the first one that returns. An arm that comes back with broken JSON can't beat a good one anymore, and for a few hours it could, which was a real bug. After the first valid result there's a 450 ms grace window, and if a second arm lands with boxes that overlap the first, the two get averaged. The rest are aborted. Three arms costs three times the tokens on a call that happens a few times a minute, and it turned a lottery into something you can rehearse a demo around.
+The first direct vision calls were too slow for the interaction. The August 8 commit notes record roughly 15–40 seconds at default reasoning effort, with 600–1,500 reasoning tokens spent on a box request. Lowering the effort often produced a response around two seconds, but slow calls still took roughly 9–17 seconds. These are development observations from that day, not a controlled latency benchmark.
 
-The same trick went onto the tools endpoint, the verify endpoint, and the watcher. Dan did the same to step review, which was a two-stage pass costing 20 to 40 seconds and became one call averaging 3.6.
+We addressed this in two ways. First, the client tries cheaper methods before asking Grok. A small HSV color detector can find salmon-colored regions in the sushi clip. An optional local Python detector supports YOLO and YOLO-World packs. The multimodal model handles requests the earlier tiers cannot satisfy. The color detector is tuned to that situation; it is not a general detector for arbitrary objects.
 
-## keeping the box on the thing
+Second, the server sends three identical label requests concurrently. It accepts successfully parsed results, waits at most another 450 milliseconds for agreement, and aborts the remaining requests. When two results have compatible structure and overlapping boxes, their coordinates can be averaged. The implementation requires matching label counts, link structure, box kinds, and an intersection-over-union of at least 0.25 for a pair of boxes to be fused. Disagreement leaves the earlier box alone.
 
-Grok gives you a box once. The video keeps moving. Something has to carry the box between calls, and we didn't want OpenCV in the browser, so the tracker is about 900 lines of TypeScript on top of `getImageData`.
+The crucial correction was making a parse failure lose the race. The fastest response is not useful if it contains unusable JSON. The label-arm tests cover that distinction, along with the grace period and fusion behavior. [The change and its measurements are in the grounding commit.](https://github.com/dereky925/GrokEye/commit/9a58c40d0be3a37d68ae2a8c66614408893e2054)
 
-I wrote it over the first day, starting from a template-matching sketch in Derek's scaffold and ending up somewhere fairly different. Frames get downsampled to 320 wide. Each tracked box keeps three templates: a 40×40 grayscale patch, its Sobel edge magnitude, and an 8×8×8 RGB histogram. Every tick, a sparse block-match flow (a 2×2 grid of small patches, SAD search, median displacement) predicts where the box went, and the search runs in a window around that prediction. If the gray NCC score comes back above 0.62 we take it and skip the rest. Otherwise the score is half gray NCC, a quarter edge NCC, a quarter Bhattacharyya on the histograms. A ±8% scale sweep is accepted only if it improves the gray match by more than 0.02. Templates adapt slowly when confident. The box moves 60% of the way toward each hit in position and 15% in size, which was the setting where it looked glued without looking jittery.
+| Change | Benefit | Cost or remaining limitation |
+| --- | --- | --- |
+| Low reasoning effort | Reduced the observed wait for simple localization | Response time still varied substantially |
+| Color and local detector tiers | Avoided a remote grounding request when a cheap method matched | Narrow coverage; a wrong early match could pre-empt a better answer |
+| Three concurrent label requests | Reduced reliance on a single slow response | More upstream work and potentially higher cost |
+| Short agreement window | Allowed some coordinate noise to be averaged | Added a bounded wait; agreement does not prove correctness |
 
-It self-throttles to 24 fps when locked and 16 when hunting. The one thing I'd call a hack is the salmon assist: on the sushi clip, if the query mentions fish and the tracker has missed twice, an HSV centroid nudges the box toward the pink thing. There's a comment in the code saying exactly that.
+We did not measure a production cost curve, and aborting a request does not establish what the provider already billed. Hedging was a hackathon tradeoff.
 
-There's also `tighten.ts`, which shrinks Grok's boxes before the tracker sees them. Grok draws generously. The tightener projects edge energy along each axis and keeps the band holding 92% of it, with limits so it can't shift the center more than a quarter or shrink below 40%. Tighter boxes track better because there's less background in the template.
+## Keeping a box attached to the video
 
-## what was rehearsed
+Grounding tells us where something is in one frame. Tracking tries to keep that answer useful while the video moves.
 
-Some of the demo is choreographed and I'd rather say so than have someone find `CHOREOGRAPHY.md`. For a handful of asks in specific clips, the IKEA leg, the GPU seat, the tamp, there are hand-traced silhouettes keyed to time windows, and the player snaps to the traced frame so the outline lands. The windows were retimed to when we'd rehearsed asking, not when the action happens. The espresso "check my work" is timeline-only, no vision call, because the skipped tamp is at a known second and a live round trip was the one thing we couldn't afford to have fail on stage.
+The tracker is custom TypeScript using canvas pixels, without OpenCV in the browser. It works on frames downsampled to 320 pixels wide. Each object keeps a 40-by-40 grayscale template, an edge template, and an RGB histogram. A small grid of block matches estimates recent motion, and its median displacement predicts where to search next.
 
-Everything else is live: the boxes, the tracker, the manuals, the web search, the step review.
+A strong grayscale normalized cross-correlation score is the fast path. Above 0.62, the tracker can skip the more expensive comparison. Otherwise, it combines grayscale similarity, edge similarity, and color-histogram similarity with weights of one-half, one-quarter, and one-quarter. A small scale search handles an object moving toward or away from the camera.
 
-<Figure src="/writing/grokeye/espresso-clip.jpg" alt="First-person view of a portafilter under an espresso grinder, tamper on the counter" caption="the espresso clip. we filmed it at the venue, 42 seconds, with a tamp deliberately left out." />
+Texture, edges, and color each fail under different conditions. Combining them helped on our clips, but did not give the tracker an understanding of object identity.
 
-## what didn't work
+The display smooths position more quickly than size: each accepted update moves 60% toward the new position and 15% toward the new dimensions. The processing loop targets roughly 24 frames per second when confident and 16 when struggling. These are implementation targets, not measured throughput guarantees across devices.
 
-Freezing the video when you started talking. It showed a blurry mid-motion frame and killed the flow, so the tracker now seeds from the speech-onset frame and the video never stops.
+We also tighten overly generous model boxes using edge energy before initializing a track. A box containing mostly background gives the tracker the wrong template. And there is a specific salmon assist: after misses, a color centroid can nudge a fish track toward the pink region. It helped the sushi demo; it should not be mistaken for a general recovery strategy.
 
-The local detector, at first. A loose COCO match returning "person" for "hand" would pre-empt Grok with a confident wrong box, and for a while that was our top source of wrong answers. The fix was making the detector return nothing on a query mismatch, so an unsure tier hands off instead of guessing.
+## What changed during the day
 
-Step review confabulated. Three runs in a row it reported an empty portafilter when every frame showed it full, because it had confused the knock box with the basket. The same endpoint also threw on every request for a while because `crypto.createHash` was used without being imported.
+The repository history captures decisions that the final demo hides:
 
-Push-to-talk was added and reverted the same afternoon. Morphing silhouettes read as wobble and became rigid glides. Grok Imagine got cut from scope by noon.
+| Stage on August 8 | Change | What prompted it |
+| --- | --- | --- |
+| Morning | Scaffold, salmon detection, early tracking | Establish the basic see-and-point loop |
+| Around midday | Parallel labels, typed annotations, connection arrows | Separate geometry from the spoken answer |
+| Early afternoon | Remove freezing from ordinary highlight turns | A paused frame interrupted the task and could catch motion blur |
+| Afternoon | Tightening, routing tests, temporal context, verification | Improve what the system was pointing at and remembering |
+| Evening | Three-arm grounding, authored demo refinements, voice watchdogs | Make the interaction more predictable under presentation conditions |
 
-I don't think any of this is a product. I think the router plus hedging plus a dumb tracker is a surprisingly good recipe for making a slow multimodal model feel present, and that's the part I'd take to the next thing.
+The freeze change is worth separating from a later exception. Ordinary highlights keep the video moving and seed the tracker from the captured frame. Authored motion cues deliberately pause and snap to a traced frame. Those are different paths serving different purposes.
+
+The last voice fixes were less glamorous. Backgrounded tabs could delay animation-frame work, and stalled audio could strand a turn. A timeout watchdog and playback completion independent of foreground rendering helped return the interface to listening.
+
+## Checking work is harder than describing it
+
+Step review exposed a problem that faster responses alone could not fix. An early implementation confused the espresso knock box with the portafilter and described an empty basket that the supplied images did not support.
+
+Dan tried a two-stage observe-then-judge pass. The follow-up commit records that it took 20–40 seconds, then describes collapsing the process into one call. The output schema still asks for a brief observation for each frame before the verdict. It also separates the footage's recorded action from the *correct procedure*. A script saying someone locked in an untamped portafilter should not make that action the grading standard.
+
+The commit reports an average of 3.6 seconds and a maximum of 5.0 seconds for the revised checks. The repository does not supply a broad evaluation set or enough measurement detail to treat those as general performance numbers. The frame-first format is useful discipline, but a model can still write a wrong observation before a wrong verdict. [The step-review revision documents the tradeoff.](https://github.com/dereky925/GrokEye/commit/7aef9c840e5ddc807b3265a86bcff879f115e194)
+
+There are checks before inference too: a review with fewer than three distinct frame images returns an insufficient-visibility result. This catches a capture pipeline that failed to seek, rather than asking the model to invent a temporal sequence from repeated images. The next-day change added spoken narration to the review panel, so the final behavior differs from the evening commit's panel-only version.
+
+## What was live and what was authored
+
+Some of the most polished moments were rehearsed. The repository documents this, and it belongs in the write-up too.
+
+Known clip-and-time windows can select hand-traced silhouettes and destination shapes. The player snaps to the traced frame, then animates the motion. Several windows were widened or retimed around the rehearsed question. That geometry is authored scene knowledge, not a model inferring a precise movement from an unseen video.
+
+The espresso “check my work” shortcut is even more explicit: it matches the playhead to a known timeline and returns the skipped-tamp or corrected-state answer without a vision call. The separate step-review endpoint does inspect frames against the procedure. The manual system is also mixed: it can retrieve web instructions, while known clips have baked scripts and the IKEA guide uses a hosted PDF.
+
+<Figure src="/writing/grokeye/espresso-clip.jpg" alt="A portafilter under an espresso grinder with a tamper resting on the counter" caption="The 42-second espresso clip filmed at the venue. It deliberately includes a skipped tamp followed by a correction, making it useful both for rehearsal and for exposing review failures." width={1280} height={720} />
+
+The demo demonstrates a combination of live inference, local tracking, and authored presentation. It does not establish reliable coaching for arbitrary physical work. A convincing overlay also cannot establish hidden properties such as torque, temperature, or whether a connection is electrically safe.
+
+## What I would carry forward
+
+I would keep the separation between answering, grounding, and tracking. Each has its own latency and failure modes. I would also keep the small routing layer and the willingness to return no box when the detector has no good match. A confidently wrong cheap tier makes the entire cascade worse.
+
+The next useful experiment would be on unfamiliar clips: measure the time to the first usable cue, how often the requested object is correctly grounded, how long the track stays attached, and how often review declines when evidence is missing. I would run that with authored cues disabled and report it separately from the rehearsed experience.
+
+For a day-long project, I am happy with what we made. Handling time, state, and failure was as important as the model call.
+
+## Sources and scope
+
+This account follows the [public repository at commit `b4a9066`](https://github.com/dereky925/GrokEye/tree/b4a90661ece09d0d3a2c7fb5649df3a167e4105f), its August 8–9 history, and my original account of the hackathon. Team context and placement are personal recollections; implementation claims are grounded in the code. Latency figures are the team's contemporaneous observations, not new measurements.
+
+The most useful source files are the [grounding implementation](https://github.com/dereky925/GrokEye/blob/b4a90661ece09d0d3a2c7fb5649df3a167e4105f/server/labels.js), [browser tracker](https://github.com/dereky925/GrokEye/blob/b4a90661ece09d0d3a2c7fb5649df3a167e4105f/src/lib/highlights.ts), [frame selection](https://github.com/dereky925/GrokEye/blob/b4a90661ece09d0d3a2c7fb5649df3a167e4105f/src/lib/frameMemory.ts), [choreography notes](https://github.com/dereky925/GrokEye/blob/b4a90661ece09d0d3a2c7fb5649df3a167e4105f/public/videos/CHOREOGRAPHY.md), and [catalog verification](https://github.com/dereky925/GrokEye/blob/b4a90661ece09d0d3a2c7fb5649df3a167e4105f/src/lib/catalogVerify.ts). A later tracking branch exists, but its changes are not presented here as part of the merged hackathon build.

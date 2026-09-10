@@ -1,67 +1,132 @@
-Swarthmore has an RTX PRO 6000 Blackwell with 96GB of VRAM. For a liberal arts college that is a strange amount of compute to have sitting in a rack, and for most of the year it wasn't doing much.
+SwatGPT started with a fairly ordinary student problem: the answer probably exists somewhere on the college website, but finding it takes longer than asking another person. Wi-Fi setup lives in the ITS knowledge base. Course requirements live in the catalog. Dining hours live somewhere else. Everyone still calls the dining hall Sharples.
 
-SwatGPT came out of wanting to use it for something. ChatGPT is better than anything I can host, but it doesn't know that Sharples is now Dining Center, or which CS courses have prerequisites the registrar page doesn't list, or how to get on the VPN. That gap is small enough to be fixable and specific enough to be useful. It's live at [chat.sccs.swarthmore.edu](https://chat.sccs.swarthmore.edu) behind an SCCS login. About 1,300 people have used it, around 200 in a given week, and it generates something like 88 million tokens a week. Nothing anyone types leaves campus.
+SCCS had a GPU, and I wanted to make that information easier to use. The result is [SwatGPT](https://chat.sccs.swarthmore.edu), a campus assistant built on LibreChat, with self-hosted inference and a retrieval system for Swarthmore information.
 
-<Figure src="/writing/swatgpt/landing.jpg" alt="SwatGPT landing page: SCCS logo, 'Ask about campus life, ITS, courses, or College resources', four starter questions" caption="the landing page. four starters, one model, no model picker." />
+The interesting part turned out to be everything around the model: collecting useful pages, keeping a question about Cornell attached to the right Cornell, recovering tools after a cache expires, and knowing when a working chat interface is quietly answering without its sources. This is an engineering account of how the project changed, including the parts I still cannot measure well.
 
-This post has been rewritten once. The first version of SwatGPT was a spring project: my own crawler, OpenWebUI in front, its built-in retrieval in the middle. In August I rebuilt it from scratch on top of current LibreChat under the SCCS org, and most of what follows is about that version.
+<Figure src="/writing/swatgpt/landing.jpg" alt="SwatGPT's landing page with campus questions and an SCCS-branded chat interface" caption="An earlier screenshot of the campus assistant. The product is intentionally focused on asking a question and getting a useful answer." width={1568} height={782} />
 
-## the model
+## From a prototype to a campus service
 
-Qwen3.6-35B-A3B in FP8. It's mixture-of-experts, 35B parameters total and about 3B active per token, which is why it can serve several people at once on one card. Thinking mode is off. It made answers slower and, for "when is the post office open," not better.
+The spring version used my own crawler, OpenWebUI, and its built-in retrieval. I started inference with llama.cpp because getting a model to respond was the first thing I needed to understand. That prototype exposed the real work: cleaning institutional web pages, managing an index, and serving more than one conversation comfortably.
 
-I started the spring version with llama.cpp because it took ten minutes to get running and I wanted to see the thing talk. That was the right call for a first day and the wrong thing to keep. Once more than one person was using it the responses got slower, because requests were handled more or less one after another. vLLM fixed that. Its continuous batching packs concurrent requests into the same forward pass, and with 96GB there's headroom for the KV cache that makes possible. The embedding and reranking models share the same GPU now, at 85% memory utilization for vLLM, which leaves about 13GB for them. We used to have a second card for that and then we didn't.
+In August I rebuilt the application around a current LibreChat fork. “Rebuilt” needs a qualification: LibreChat supplies the chat interface, streaming, conversation storage, and much of the backend. I did not write those systems from scratch. My work was the campus-specific retrieval and ingestion, integration, configuration, and the changes needed to operate it through SCCS.
 
-## the corpus
+The repository gives the August work a clearer timeline than my recollection of the spring prototype:
 
-The base model knows nothing about Swarthmore, so everything useful comes from retrieval, and retrieval is only as good as what you feed it.
+| Stage | What changed | What it addressed |
+| --- | --- | --- |
+| August 15 | Targeted knowledge-base, website, and catalog scrapers | A broad crawl produced too much repeated or irrelevant material |
+| August 16 | Qdrant, custom retrieval, ingestion, interface gates, deployment | More control over what reaches the model and how the app runs |
+| August 16–23 | Hybrid search, Dash tools, MCP recovery fixes | Campus entities, current information, and failures after startup |
+| September 9 | Retrieval metrics, generation ledger, admin tools, directory lookup | Visibility into the service and another source of structured context |
 
-The spring version had a general crawler over `swarthmore.edu`. It respected `robots.txt`, took two days, and produced a few hundred thousand chunks where everything was 0.7 similar to everything else, because institutional websites are nine thousand pages of the same nav chrome and footer. I spent more time cleaning that output than crawling it.
+The early prototype is useful background, but the detailed implementation below follows the September 9 repository snapshot. Those are different kinds of evidence; I do not want a remembered frustration to become a benchmark.
 
-This time there are three targeted scrapers. `scrape_kb.py` pulls every article from the ITS knowledge base through the MediaWiki API, which gives you clean wikitext instead of rendered HTML. `scrape_www.py` walks the sitemap with an allowlist of sections and department pages, runs the body through trafilatura, and drops anything under 300 characters. `scrape_catalog.py` is the ugly one: the course catalog lives in Acalog behind an AWS WAF that blocks normal crawling, so it uses the same `ajax/preview_*.php` endpoints the site's own JavaScript calls, at one request a second, with backoff that goes from 60 seconds to 480 when it gets throttled. About 200 individual printer pages got merged into one directory and one setup guide because nobody wants a chunk per printer.
+## Separate the model from the information
 
-Total: 3,528 markdown files. 487 knowledge base articles, 1,080 pages from the main site, 1,961 course entries.
+Generation runs through vLLM on loon's RTX PRO 6000 Blackwell with 96 GB of VRAM. The configured model is `Qwen3.6-35B-A3B-FP8`, a pretrained Qwen model. SwatGPT's campus knowledge comes from supplying context at request time, rather than training a new foundation model.
 
-## ingestion
+The same GPU runs two smaller services through Hugging Face Text Embeddings Inference: `gte-modernbert-base` for 768-dimensional embeddings and `gte-reranker-modernbert-base` for reranking. Thinking is disabled in the chat configuration. For the kind of campus questions this interface invites, I wanted the answer to arrive without a long visible reasoning phase.
 
-Chunking is heading-aware now. A markdown parser splits on sections first, then a sentence splitter caps chunks at 512 tokens with 64 of overlap, and every chunk gets embedded with its breadcrumb prepended: `title › section`, then the text. That breadcrumb also feeds the lexical index, so a course title is searchable even when the body of the chunk never repeats it. The spring version used fixed-size splitting and cut course descriptions in half, which I said was the next thing to fix in the first version of this post. It was.
+The stateful application lives on a separate VM, eagle. That includes LibreChat, MongoDB for users and conversations, Meilisearch for conversation search, Qdrant for campus retrieval, and the Dash MCP server with its PostgreSQL cache. Keeping this tier separate means an app rebuild does not require disturbing the model server.
 
-Embeddings are gte-modernbert-base, 768 dimensions, served by a TEI container on the GPU box. The whole corpus, 3,528 documents into 11,302 chunks, embeds and indexes in 23 seconds.
+The separation also makes failures easier to describe. If embeddings or Qdrant fail, chat can continue without retrieved context. If generation fails, there is no model response. Calling both situations “the app is down” hides a distinction that matters to the person debugging it.
 
-Reindexing is zero-downtime because of a Qdrant alias. Every ingest writes to a fresh timestamped collection, then swaps the `kb` alias to it in one operation and deletes the old ones. Nobody talking to the bot notices.
+## A smaller, more deliberate corpus
 
-## retrieval
+The first crawler treated the college website too uniformly. Navigation, footers, old news, and useful instructions all became text. A large corpus can look impressive while mostly teaching retrieval that every page belongs to the same institution.
 
-The spring version's retrieval was whatever OpenWebUI did, which was a serial embed-then-search pass before every message that you couldn't see into or tune. Average response time was about 4.5 seconds. LibreChat ships with its own separate RAG service backed by pgvector, and I ripped that out too. Retrieval is now about 300 lines of TypeScript inside LibreChat's own `packages/api`, and it runs on every message.
+The replacement has three collection paths. `scrape_kb.py` uses MediaWiki's API for ITS articles. `scrape_www.py` filters the public sitemap to student-facing sections, extracts the main body with trafilatura, and discards bodies shorter than 300 characters. It also excludes categories such as news, profiles, and galleries. `scrape_catalog.py` collects courses, programs, and selected policies through the catalog's own AJAX endpoints, with request pacing and backoff.
 
-It's hybrid. A dense query and a sparse query go to Qdrant in parallel. The sparse side is a bag of hashed tokens: lowercase, split on `[a-z0-9]+`, FNV-1a each token to an index, and let Qdrant apply IDF weighting. The same tokenizer exists twice, once in TypeScript for queries and once in Python for ingest, with a comment on each saying it must stay byte-identical to the other, because if the two ever disagree the sparse index silently returns garbage. Dense catches "how do I get my laptop on the network" when the article says Wi-Fi. Sparse catches "Cornell" when you mean the library and the embedding thinks you mean the university.
+| Source | Markdown files in the inspected server checkout | Useful for |
+| --- | ---: | --- |
+| ITS knowledge base | 487 | Setup instructions and troubleshooting |
+| Main college website | 1,080 | Offices, campus services, and policies |
+| Course catalog | 1,961 | Courses, programs, and academic requirements |
+| Total | 3,528 | The input to a full corpus rebuild |
 
-The two candidate lists get merged and deduplicated to 32, which is TEI's default batch limit for the reranker. A cross-encoder scores each chunk against the question, anything below 0.3 is dropped, and the top 8 go into the context. One rule on top of that: if the best lexical hit ranked in the top three on the sparse side and didn't survive the rerank, it takes the eighth slot anyway. Entity questions ground reliably because of that rule and not because of anything smarter.
+That count describes the files on loon, not a fresh scrape or a live database query. The Git-tracked snapshot contains 3,492 Markdown files; the difference is 36 catalog files present in the server checkout. It is a small reminder that the repository and the deployed data are not automatically identical.
 
-The whole thing has a budget of 1.5 seconds, wall clock, across embed, search, and rerank, on one abort signal. If it blows the budget or anything in the chain errors, the function returns `undefined`, logs one warning, and the chat proceeds without context. Slow Qdrant should never mean no answer. And it's kicked off at the top of message building, overlapped with attachments and tool setup, so most of that 1.5 seconds is hidden behind work that had to happen anyway. Average response time went from 4.5 seconds to 1.8. This one you mostly don't feel.
+Cleanup is still imperfect. Two consolidated printer documents carry the knowledge base's main-page URL rather than a useful article URL. Retrieval can find the right instructions and still give an unhelpful citation. Source metadata is part of answer quality, not just a field to attach at the end.
 
-Nineteen unit tests cover it, mostly the failure modes: connection refused, Qdrant 500, reranker 503, timeout, each env var missing. Each one should produce exactly one warning and a normal chat. Accuracy I check by hand against the list of questions people actually ask, and 96% of them come back right. That's not an eval harness, and I know it.
+## Chunking around meaning, then indexing
 
-<Figure src="/writing/swatgpt/sharples.jpg" alt="SwatGPT answering 'When is Sharples open today?' with breakfast, lunch, and dinner times, after running the get_campus_hours tool" caption="live data comes from a different path than the knowledge base: a tool call against the campus dashboard." />
+Ingestion first splits Markdown around headings, then uses a sentence splitter with a 512-token target and 64-token overlap. Each embedded chunk starts with its title and section breadcrumb. A paragraph about prerequisites should remain associated with the course whose page it came from, even when the paragraph does not repeat the course name.
 
-## live data
+That breadcrumb is also included in the sparse representation. The payload retains the body, source URL, title, section, and relevant catalog metadata. LlamaIndex helps with this offline chunking; it is not on the request-time retrieval path.
 
-Retrieval answers "how do I connect to Wi-Fi." It can't answer "when is Sharples open today," because that changes daily and the knowledge base doesn't. Damian built an MCP server for that: twelve read-only tools over The Dash, the campus dashboard, for hours, dining menus, events, news, SEPTA departures, weather, alerts. It polls on a schedule into its own Postgres and serves from the snapshot, so if The Dash goes down, the bot degrades to yesterday's data rather than hanging.
+Rebuilding the index uses a fresh timestamped Qdrant collection. The script embeds the corpus, uploads its points, switches the `kb` alias to the new collection, and then removes older collections. Chat always queries the alias. An incomplete upload therefore does not become the active corpus halfway through a rebuild.
 
-The part of this I had to fix was LibreChat's tool cache. It expires app-level MCP tools after twelve hours, and once expired every request failed with "configured to use MCP tools, but none are available" until someone restarted the container. Two days of that before I found it. The deploy now refuses to go green unless the app log shows the MCP server initialized with a nonzero tool count.
+This is a full rebuild rather than an incremental ingestion system. Scheduling scrapes, detecting meaningful changes, and validating a new index before switching the alias remain useful next steps. An atomic switch prevents a partial index from appearing; it does not prove the replacement is better.
 
-## the frontend
+## Why semantic similarity was not enough
 
-It's LibreChat. The spring version was OpenWebUI, which was slow, hid its retrieval, and fought every attempt to make it look like anything other than OpenWebUI. LibreChat handles streaming, conversation history, and custom endpoints, and stays out of the way.
+The failure that motivated hybrid search was a question about a campus entity. Ask whether Cornell is open late, and dense retrieval can find plenty of material about library hours without preserving the fact that Cornell means Cornell Science Library at Swarthmore.
 
-What's changed is how much of it is turned off. There's one model spec, enforced, so there is no model picker. Presets, bookmarks, memories, code execution, web search, the agent builder, the prompt marketplace: gated off in config, and I added an interface gate on the client so a disabled route redirects to a new chat instead of rendering an empty page. Login is Keycloak through OIDC, email registration is off, and the palettes are borrowed from two other SCCS projects rather than designed for this one.
+The current path combines semantic and literal matching:
 
-## deploying
+1. Embed the latest user message and build a sparse term-frequency vector from its words.
+2. Query Qdrant for the top 20 dense hits and top 20 sparse hits, with the two searches running concurrently.
+3. Deduplicate by point ID and cap the candidate pool at 32, matching the reranker's default batch limit.
+4. Score candidates with the cross-encoder, discard scores below 0.3, and select up to eight chunks.
+5. Preserve an eligible high-ranking lexical hit when otherwise all eight slots would go to other candidates.
 
-Push to `main`. A self-hosted GitHub Actions runner on the app VM checks out the commit, rebuilds the app image and the MCP image, restarts only the changed containers, polls the app until it returns 200, checks the MCP container is healthy, and fails the deploy if the tool count is zero. About 90 seconds. Data volumes and config never get touched.
+The sparse tokenizer lowercases text, extracts alphanumeric tokens of at least two characters, and maps them to 32-bit FNV-1a hashes. Term counts become sparse values; Qdrant applies IDF weighting. Python computes document vectors during ingestion and TypeScript computes query vectors. Those implementations must agree, or a word in the query will stop addressing the same sparse coordinate as that word in a document.
 
-The lesson from the spring version is still the lesson: inside a container, `localhost` is that container, and an unmounted volume means the index disappears on restart. I re-embedded the whole corpus twice before that one landed. This time everything is a named volume and the GPU box and the app box are different machines with different compose files.
+The lexical rule has a precise limit. A candidate must already pass the 0.3 reranking floor. If none of the selected eight belongs to the sparse channel's top three, the eligible candidate with the best sparse rank replaces the final slot. This protects a useful entity match; it does not force every literal mention into context or guarantee a correct answer.
 
----
+There are other compromises. Candidate merging puts dense results first before applying the 32-item cap, so the final pool is not a perfectly balanced fusion. And the reranker sees chunk bodies, while initial indexing includes title breadcrumbs. These choices keep the implementation small, but deserve measurement before being treated as optimal.
 
-Things I still don't have: a feedback signal beyond people complaining, an eval set I'd defend, and a scheduler for the scrapers, which I run by hand. The retrieval also only looks at the latest message with no query rewriting, so "what about the other one" after a good answer gets a bad one. Those are the next things.
+## A retrieval failure should be visible
+
+Embedding, search, and reranking share a single 1.5-second abort budget. A network error or timeout returns no context and allows the message to proceed. Retrieval also starts alongside other message-building work, rather than being an entirely separate blocking phase.
+
+The benefit is availability. The cost is that an assistant can look healthy while losing the information that makes it useful. The September work therefore adds a structured result: `hit`, `empty`, `disabled`, `error`, or `timeout`, along with elapsed time and the number of chunks returned. Those outcomes feed metrics instead of collapsing every unsuccessful retrieval into the same blank result.
+
+The retrieval tests cover request payloads, ordering, deduplication, the lexical rule, and service failures. They explicitly check that a lexical hit below the score floor is dropped. These are checks of implementation behavior. They do not establish answer accuracy across real student questions.
+
+## Current information takes another path
+
+<Figure src="/writing/swatgpt/sharples.jpg" alt="SwatGPT using a campus-hours tool to answer a question about Sharples opening hours" caption="A saved example of the live-data path. The screenshot shows tool use; it is not a guarantee that the displayed hours are current." width={1568} height={470} />
+
+A scraped page can explain a dining plan, but today's menu and departures need fresher data. Damian built the Dash MCP server, which exposes read-only tools for the public information shown by the campus dashboard: hours, dining, events, transit, alerts, and other feeds.
+
+Most tool calls read a PostgreSQL snapshot refreshed by background polling. Dining also has a bounded read-through path: if a requested date, meal, or location is absent or stale, the server can fetch it from the upstream feed and save the result. Responses include provenance and freshness metadata, with stale cache data available when upstream requests fail.
+
+The most instructive integration bug was unrelated to the answer itself. LibreChat cached application-level MCP tools with a twelve-hour lifetime. After expiry, recovery fetched the tool list, but publication lacked the ordered revision required by the cache writer. The write was refused. A running server could have perfectly valid tools while the application believed none were available.
+
+The August 23 fix gives recovery publications the next revision and makes remaining refusals visible in warning logs. Restarting had temporarily hidden the problem; repairing the cache transition addressed why it returned.
+
+## Operating the application is part of building it
+
+The interface removes many capabilities inherited from LibreChat: model selection, agent creation, web search, code execution, and user-added MCP servers. Route gates enforce disabled features beyond hiding their navigation links. SCCS's Keycloak provides the login path. This leaves a campus-oriented product that is easier to explain and maintain.
+
+Deployment runs through a self-hosted GitHub Actions runner. The workflow rebuilds the application and MCP images, updates the Compose stack, polls application readiness, checks MCP health and connectivity, and rejects an initialization log reporting zero tools. One limitation in that final check: an absent initialization log is printed but does not itself fail the deploy. It is stronger than checking that containers started, but still has a gap.
+
+September's additions make operations more concrete: Prometheus metrics, monitoring configuration, a per-response generation ledger, usage summaries, and admin controls. The ledger records tokens, time to first token, duration, tools, and retrieval outcomes. Admin review and export have separate capabilities and audit records.
+
+This changes how I should describe privacy. Inference is self-hosted, but conversations are stored and authorized administrators have review functionality. Local inference alone does not mean messages are invisible to operators. The presence of monitoring code also does not prove every dashboard or alert receiver is deployed and working.
+
+The same September snapshot adds a separate directory lookup path. It detects supported housing questions, matches them against an in-memory directory index, and supplies structured context. The formatter handles missing entries, ambiguity, and hidden housing information. This is lookup over an imported snapshot, not a claim that an LLM learned the student directory; a repository review also cannot verify that a production import is current.
+
+## What I can measure, and what I still cannot
+
+Earlier versions of this post quoted adoption, token volume, latency improvements, and a hand-checked accuracy percentage. Those numbers did not come with a reproducible evaluation set or a defined reporting window, so they are not evidence for this version of the write-up.
+
+What I can point to is narrower: the corpus files, retrieval parameters, regression tests, deployment checks, and observability code. Even the ingestion script's `--verify` option only prints dense-search results for a few smoke questions. It does not exercise the complete hybrid-and-generation path or score the resulting answers.
+
+The next useful experiment is a modest campus evaluation set: named places, course codes, paraphrased instructions, stale information, ambiguous questions, and follow-ups. The current retriever uses the latest message without rewriting it from conversation history, so “what about the other one?” remains a predictable weakness. I want to measure source retrieval and answer correctness separately, then compare dense-only and hybrid retrieval on the same questions.
+
+This project taught me how many ordinary systems problems sit inside a chatbot: data quality, caches, timeouts, deployment checks, and permissions. I am still learning how to evaluate the answers rigorously. Having a service that responds is the starting point for that work.
+
+## Sources and scope
+
+This account follows the [SwatGPT repository at `601e2bf47`](https://github.com/swat-sccs/SwatGPT/tree/601e2bf4737108ee89cf4dd2e3b274b2de7bd46d), inspected alongside its server checkout. The spring prototype section retains my earlier account; the current fork's history establishes the later implementation. No production conversations were inspected and no live accuracy or load benchmark was run for this article.
+
+- **Collection and ingestion:** [website scraper](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/scrape_www.py), [catalog scraper](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/scrape_catalog.py), and [chunking, embeddings, and alias replacement](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/ingest/ingest.py).
+- **Retrieval:** [hybrid-search change](https://github.com/swat-sccs/SwatGPT/commit/e06f55d23), [candidate merging](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/packages/api/src/rag/search.ts), [selection and failure behavior](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/packages/api/src/rag/retrieve.ts), and [regression tests](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/packages/api/src/rag/retrieve.spec.ts).
+- **Live data and deployment:** [Dash MCP design](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/dash_mcp/README.md), [cache-recovery fix](https://github.com/swat-sccs/SwatGPT/commit/d695d01bc), and [production workflow](https://github.com/swat-sccs/SwatGPT/blob/601e2bf47/.github/workflows/production.yml).
+- **Later work:** [generation ledger](https://github.com/swat-sccs/SwatGPT/commit/e89204b29), [admin review](https://github.com/swat-sccs/SwatGPT/commit/c9ac67d9b), [directory lookup](https://github.com/swat-sccs/SwatGPT/tree/601e2bf47/packages/api/src/directory), and [monitoring configuration](https://github.com/swat-sccs/SwatGPT/tree/601e2bf47/monitoring).
+
+SwatGPT is an SCCS project built on [LibreChat](https://github.com/danny-avila/LibreChat) and its contributors' work. This is my account of the integration and engineering, not a claim of sole authorship of the stack.

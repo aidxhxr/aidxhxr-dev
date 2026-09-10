@@ -13,16 +13,16 @@ export const projects: Project[] = [
   {
     name: "Company Brain",
     description:
-      "AI assistant for small businesses, built with Silkroad Innovation Hub. Every chat gets triaged and distilled into a wikilinked Markdown vault behind an approval queue; reaches owners over iMessage and email with a budget monitor, audit log, and trust ramp in front of anything that sends.",
+      "AI assistant for small businesses, built with Silkroad Innovation Hub. Selective ingestion turns conversations into linked Markdown notes, with retrieval, owner approvals, and shared workflows across web chat, email, and iMessage.",
     github: "https://github.com/Silkroad-Innovation-Hub/FDE-company-brain",
     slug: "company-brain",
-    date: "Aug 2026",
+    date: "Sep 2026",
     tags: ["TypeScript", "React", "MongoDB", "LibreChat", "d3"],
   },
   {
     name: "GrokEye",
     description:
-      "Voice-driven AR coaching over a live camera feed, top 6 at xAI's Grokathon. Web Speech in, Grok 4.5 for vision and answers, xAI TTS out, three hedged requests to make box calls fast, and a dependency-free TypeScript tracker to keep them on the object.",
+      "A Grokathon prototype combining voice, visual grounding, and browser tracking. Local detection and hedged model calls reduce waiting; the write-up separates live behavior from the rehearsed demo paths.",
     github: "https://github.com/dereky925/GrokEye",
     slug: "grokeye",
     demo: "https://www.youtube.com/watch?v=lC4oP8kb9KE",
@@ -32,11 +32,11 @@ export const projects: Project[] = [
   {
     name: "SwatGPT",
     description:
-      "Swarthmore's self-hosted campus LLM, run by SCCS. Qwen3.6-35B-A3B on vLLM, hybrid dense and sparse retrieval over 3,500 scraped campus docs with a 1.5 second fail-open budget, live campus data over MCP, Keycloak login. Nothing leaves campus.",
+      "Swarthmore's self-hosted campus assistant, built with SCCS. Local model inference, hybrid retrieval over campus documents, live tools, Keycloak sign-in, and the operational work around a shared service.",
     github: "https://github.com/swat-sccs/SwatGPT",
     slug: "swatgpt",
     demo: "https://chat.sccs.swarthmore.edu",
-    date: "Aug 2026",
+    date: "Sep 2026",
     tags: ["TypeScript", "Python", "vLLM", "Qdrant", "RAG", "Docker"],
   },
   {
@@ -51,18 +51,18 @@ export const projects: Project[] = [
   {
     name: "Breadcrumbs",
     description:
-      "Social platform built around intentional sharing. Five items a day, 24-hour expiry, group-based feeds — designed against engagement maximization.",
+      "A social-app prototype exploring five posts a day, small groups, and an expiring feed. Product decisions and early implementation notes about making sharing feel more personal.",
     slug: "breadcrumbs",
     date: "Dec 2025",
-    tags: ["TypeScript", "Next.js", "Postgres"],
+    tags: ["TypeScript", "Supabase", "Product design"],
   },
   {
     name: "TickFlow",
     description:
-      "Task and project management platform for student organizations. Full-stack — Next.js, REST API, Postgres.",
-    github: "https://github.com/aidxhxr/tickflow",
+      "A task-management prototype built with SCCS: a database-backed Kanban board, relational assignments, project search, and Swarm deployment. A technical account of the implemented core and unfinished identity and settings layers.",
+    github: "https://github.com/swat-sccs/tickflow",
     slug: "building-tickflow",
-    date: "Oct 2025",
+    date: "Jun 2026",
     tags: ["TypeScript", "Next.js", "Postgres"],
   },
 ];

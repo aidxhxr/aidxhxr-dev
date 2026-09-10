@@ -2,20 +2,29 @@ export type Post = {
   slug: string;
   title: string;
   date: string;
+  updatedDate?: string;
   description: string;
   readingMinutes?: number;
+  kind: "Research" | "Engineering" | "Product";
+  category: string;
 };
 
 export const posts: Post[] = [
   {
     slug: "company-brain",
-    title: "company brain: a business's chats, distilled into a vault",
+    updatedDate: "2026-09-10",
+    readingMinutes: 11,
+    kind: "Engineering",
+    category: "AI systems",
+    title: "Turning conversations into a business’s memory",
     date: "2026-08-30",
     description:
-      "A LibreChat fork that logs every message, triages it on a cheap model, distills it into wikilinked notes, and only writes with approval. Built for small businesses, dogfooded on my own texts.",
+      "How Company Brain turns chat into reviewable notes, retrieves what matters, and connects an assistant to the places a business already works.",
   },
   {
     slug: "pinn-research",
+    kind: "Research",
+    category: "Scientific machine learning",
     title: "When a good fit hides the wrong mechanism",
     date: "2026-09-10",
     readingMinutes: 43,
@@ -24,30 +33,46 @@ export const posts: Post[] = [
   },
   {
     slug: "swatgpt",
-    title: "swatgpt: a campus llm that stays on campus",
+    updatedDate: "2026-09-10",
+    readingMinutes: 11,
+    kind: "Engineering",
+    category: "Campus infrastructure",
+    title: "From a chat app to a campus service",
     date: "2026-08-24",
     description:
-      "Rebuilt on LibreChat: three scrapers, hybrid dense and sparse retrieval on a 1.5 second budget, live campus data over MCP, and a deploy that refuses to go green with zero tools.",
+      "Building SwatGPT around local inference, campus knowledge, live tools, and the unglamorous work of keeping a service running.",
   },
   {
     slug: "grokeye",
-    title: "grokeye: hands-free ar coaching, built in a day at grokathon",
+    updatedDate: "2026-09-10",
+    readingMinutes: 11,
+    kind: "Engineering",
+    category: "Multimodal interfaces",
+    title: "Making a slow vision model feel present",
     date: "2026-08-10",
     description:
-      "Top 6 at xAI's Grokathon. A regex router, three hedged Grok calls, and a 900-line TypeScript tracker to make a slow multimodal model feel present.",
+      "A Grokathon experiment in voice, visual grounding, and tracking—and the shortcuts that helped a one-day prototype work.",
   },
   {
     slug: "breadcrumbs",
-    title: "breadcrumbs: a social platform built around what you don't post",
+    updatedDate: "2026-09-10",
+    readingMinutes: 6,
+    kind: "Product",
+    category: "Social software",
+    title: "What if a social app asked for less?",
     date: "2026-03-10",
     description:
-      "Five posts a day, gone in 24 hours, split by group. Trying to build the thing my good group chats already are by accident.",
+      "Five posts a day, small groups, and an expiring feed. Notes on designing a social app around the people you actually want to hear from.",
   },
   {
     slug: "building-tickflow",
-    title: "building tickflow: task management for student orgs",
-    date: "2026-02-20",
+    updatedDate: "2026-09-10",
+    readingMinutes: 10,
+    kind: "Product",
+    category: "Software for student organizations",
+    title: "Building a task manager, one schema at a time",
+    date: "2026-09-10",
     description:
-      "Rewriting the Prisma schema three times, pinning a Swarm service to one node, and still not having built auth.",
+      "TickFlow started with student organizations and became a lesson in data modeling, permissions, and the distance between a prototype and a usable service.",
   },
 ];
