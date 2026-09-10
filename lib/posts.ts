@@ -3,6 +3,7 @@ export type Post = {
   title: string;
   date: string;
   description: string;
+  readingMinutes?: number;
 };
 
 export const posts: Post[] = [
@@ -15,10 +16,11 @@ export const posts: Post[] = [
   },
   {
     slug: "pinn-research",
-    title: "physics-informed neural networks, six months later",
-    date: "2026-08-26",
+    title: "When a good fit hides the wrong mechanism",
+    date: "2026-09-10",
+    readingMinutes: 43,
     description:
-      "Thirty-six unknown parameters of a colorectal cancer model, a residual that doesn't differentiate, and three ways of finding out which parameters you can't recover.",
+      "A research account of physics-informed neural networks, inverse problems, Bayesian calibration, and learning biological mechanisms from informative experiments.",
   },
   {
     slug: "swatgpt",

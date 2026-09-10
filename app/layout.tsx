@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "katex/dist/katex.min.css";
+import "./research.css";
 import Nav from "@/components/nav";
 import PixelCursor from "@/components/pixel-cursor";
 import { Providers } from "@/components/providers";

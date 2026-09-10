@@ -42,10 +42,10 @@ export const projects: Project[] = [
   {
     name: "PINN Research",
     description:
-      "Parameter recovery for a 7-state colorectal cancer ODE model with physics-informed neural networks: an integral residual that doubled recovery over autodiff, Fisher information and Bayesian PINNs for identifiability, and neural-mechanistic hybrids. Paper with Nate Kim and our advisor.",
+      "Parameter recovery for a 7-state colorectal cancer ODE model with physics-informed neural networks: forward and inverse learning, integral-residual training, Fisher information, Bayesian calibration, and neural–mechanistic hybrids with targeted intervention experiments.",
     github: "https://github.com/aidxhxr/PINN-Research",
     slug: "pinn-research",
-    date: "Jul 2026",
+    date: "Sep 2026",
     tags: ["Python", "PyTorch", "SciPy", "HMC"],
   },
   {

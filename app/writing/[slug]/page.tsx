@@ -9,6 +9,7 @@ import CompanyBrain from "@/content/writing/company-brain.mdx";
 import Grokeye from "@/content/writing/grokeye.mdx";
 import PinnResearch from "@/content/writing/pinn-research.mdx";
 import Swatgpt from "@/content/writing/swatgpt.mdx";
+import ResearchArticle from "@/components/research/article";
 
 const postComponents: Record<string, React.ComponentType> = {
   breadcrumbs: Breadcrumbs,
@@ -36,6 +37,10 @@ export async function generateMetadata({
   return {
     title: `${post.title} — Amirkhan Aidarkhan`,
     description: post.description,
+    openGraph: {
+      title: post.title, description: post.description, type: "article",
+      publishedTime: post.date, authors: ["Amirkhan Aidarkhan"],
+    },
   };
 }
 
@@ -51,6 +56,10 @@ export default async function PostPage({
   const project = projects.find((p) => p.slug === slug);
   const Post = postComponents[slug];
   if (!Post) notFound();
+
+  if (slug === "pinn-research") {
+    return <ResearchArticle post={post} project={project} />;
+  }
 
   return (
     <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16">
