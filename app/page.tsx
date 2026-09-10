@@ -4,16 +4,20 @@ import { projects } from "@/lib/projects";
 import AsciiMorph from "@/components/ascii-morph";
 
 export default function Home() {
-  const order = ["pinn-research", "swatgpt", "grokeye", "company-brain", "breadcrumbs", "building-tickflow"];
-  const featured = order.flatMap(slug => {
+  const selections = [
+    { slug: "pinn-research", note: "Learning biological mechanisms from data, and figuring out when we can’t." },
+    { slug: "swatgpt", note: "A campus assistant, from scraping course catalogs to keeping inference local." },
+    { slug: "grokeye", note: "Voice, vision, and object tracking, built over a day at Grokathon." },
+    { slug: "company-brain", note: "Turning everyday business conversations into useful memory." },
+  ];
+  const featured = selections.flatMap(({ slug, note }) => {
     const post = posts.find(p => p.slug === slug);
     const project = projects.find(p => p.slug === slug);
-    return post && project ? [{ post, name: project.name }] : [];
+    return post && project ? [{ post, name: project.name, note }] : [];
   });
 
   return (
-    <>
-    <div className="max-w-[773px] mx-auto px-6 pt-10 pb-6 sm:pt-16 sm:pb-10">
+    <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16 space-y-14">
       <div className="flex min-h-[calc(100svh-148px)] flex-col gap-8 sm:min-h-[calc(100svh-196px)] md:min-h-0 md:flex-row md:items-center md:gap-10">
         <div className="space-y-10 md:space-y-14 md:flex-1 min-w-0">
           <section className="rise">
@@ -77,9 +81,8 @@ export default function Home() {
         </div>
       </div>
 
+      <FeaturedWork items={featured} />
     </div>
-    <FeaturedWork items={featured} />
-    </>
   );
 }
 

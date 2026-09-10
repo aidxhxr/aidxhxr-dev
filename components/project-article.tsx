@@ -10,7 +10,7 @@ export default function ProjectArticle({ post, project, children }: { post: Post
   return (
     <div className="publication project-publication" id="article-top">
       <header className="article-header site-shell">
-        <div className="article-breadcrumb"><Link href="/#featured-work">Featured work</Link><span aria-hidden="true">/</span><span>{project?.name}</span></div>
+        <div className="article-breadcrumb"><Link href="/#featured-work">Selected work</Link><span aria-hidden="true">/</span><span>{project?.name}</span></div>
         <p className="eyebrow article-category">{post.category} / {post.kind === "Product" ? "Build notes" : "Engineering notes"}</p>
         <h1>{post.title}</h1>
         <p className="article-deck">{post.description}</p>

@@ -1,38 +1,32 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import type { Post } from "@/lib/posts";
-import WorkVisual from "./work-visual";
 
-const filters = ["All", "Research", "Engineering", "Product"] as const;
-type WorkItem = { post: Post; name: string };
+type WorkItem = { post: Post; name: string; note: string };
 
 export default function FeaturedWork({ items }: { items: WorkItem[] }) {
-  const [filter, setFilter] = useState<(typeof filters)[number]>("All");
-  const visible = items.filter(({ post }) => filter === "All" || post.kind === filter);
   return (
-    <section className="featured-work" id="featured-work" aria-labelledby="featured-title">
-      <div className="featured-heading">
-        <div><p className="work-eyebrow">From the workbench</p><h2 id="featured-title">Featured work<span>.</span></h2></div>
-        <p>Things I’m building, questions I’m following,<br className="hidden sm:block" /> and what I’ve learned along the way.</p>
-      </div>
-      <div className="work-toolbar">
-        <div className="work-filters" role="group" aria-label="Filter featured work">
-          {filters.map(option => <button key={option} type="button" aria-pressed={option === filter} onClick={() => setFilter(option)}>{option}</button>)}
-        </div>
-        <span className="work-count" role="status">{String(visible.length).padStart(2, "0")} {visible.length === 1 ? "story" : "stories"}</span>
-      </div>
-      <div className="work-grid">
-        {visible.map(({ post, name }) => <Link className="work-card" key={post.slug} href={`/writing/${post.slug}`}>
-          <div className="work-card-image"><WorkVisual slug={post.slug} /><span className="work-open" aria-hidden="true">↗</span></div>
-          <div className="work-card-meta"><span>{name} <span aria-hidden="true">/</span> {post.kind}</span><span>{post.readingMinutes} min read</span></div>
-          <h3>{post.title}</h3>
-          <p>{post.description}</p>
-          <span className="work-read">Read the {post.kind === "Research" ? "research" : post.kind === "Product" ? "notes" : "story"} <span aria-hidden="true">↗</span></span>
-        </Link>)}
-      </div>
-      <div className="work-footer"><span>Built while studying computer science at Swarthmore.</span><Link href="/projects">Project index <span aria-hidden="true">↗</span></Link></div>
+    <section id="featured-work" aria-labelledby="featured-title" className="rise scroll-mt-10" style={{ animationDelay: "280ms" }}>
+      <h2 id="featured-title" className="text-xs font-mono text-dim mb-5">
+        selected work
+      </h2>
+      <ul className="space-y-6">
+        {items.map(({ post, name, note }) => (
+          <li key={post.slug}>
+            <Link
+              href={`/writing/${post.slug}`}
+              className="group block focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-muted"
+            >
+              <span className="text-sm text-fg group-hover:text-sharp transition-colors link-underline-group">
+                {name} <span aria-hidden="true" className="text-dim">↗</span>
+              </span>
+              <p className="mt-1 text-sm text-muted leading-relaxed">{note}</p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Link href="/projects" className="inline-block mt-6 text-xs font-mono text-dim hover:text-muted transition-colors link-underline">
+        all projects →
+      </Link>
     </section>
   );
 }

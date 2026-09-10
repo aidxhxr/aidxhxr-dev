@@ -8,7 +8,7 @@
   --c-bg: #f3eee3;
   --c-text: #2b2620;
   --c-muted: #6f675b;
-  --c-dim: #7c725f;
+  --c-dim: #9b9079;
   --c-sharp: #14110c;
   --c-border: #e4ddcd;
   --c-ascii: #c2622a;
@@ -19,8 +19,8 @@
 .dark {
   --c-bg: #0a0a0a;
   --c-text: #d4d4d4;
-  --c-muted: #999b96;
-  --c-dim: #7d8079;
+  --c-muted: #737373;
+  --c-dim: #3a3a3a;
   --c-sharp: #ffffff;
   --c-border: #1c1c1c;
   --c-ascii: #6f9fcf;
