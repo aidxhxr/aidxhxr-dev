@@ -1,12 +1,19 @@
-import Link from "next/link";
+import FeaturedWork from "@/components/featured-work";
+import { posts } from "@/lib/posts";
 import { projects } from "@/lib/projects";
 import AsciiMorph from "@/components/ascii-morph";
 
 export default function Home() {
-  const recent = projects.slice(0, 3);
+  const order = ["pinn-research", "swatgpt", "grokeye", "company-brain", "breadcrumbs", "building-tickflow"];
+  const featured = order.flatMap(slug => {
+    const post = posts.find(p => p.slug === slug);
+    const project = projects.find(p => p.slug === slug);
+    return post && project ? [{ post, name: project.name }] : [];
+  });
 
   return (
-    <div className="max-w-[773px] mx-auto px-6 py-10 sm:py-16 space-y-14">
+    <>
+    <div className="max-w-[773px] mx-auto px-6 pt-10 pb-6 sm:pt-16 sm:pb-10">
       <div className="flex min-h-[calc(100svh-148px)] flex-col gap-8 sm:min-h-[calc(100svh-196px)] md:min-h-0 md:flex-row md:items-center md:gap-10">
         <div className="space-y-10 md:space-y-14 md:flex-1 min-w-0">
           <section className="rise">
@@ -70,81 +77,9 @@ export default function Home() {
         </div>
       </div>
 
-      {recent.length > 0 && (
-        <section className="rise" style={{ animationDelay: "280ms" }}>
-          <p className="text-xs font-mono text-dim mb-5 uppercase tracking-widest">
-            projects
-          </p>
-          <ul className="space-y-7">
-            {recent.map((p) => (
-              <li key={p.name}>
-                {p.slug ? (
-                  <Link href={`/writing/${p.slug}`} className="group block mb-2">
-                    <div className="flex items-baseline justify-between gap-4 mb-1">
-                      <span className="text-sm text-fg group-hover:text-sharp transition-colors link-underline-group">
-                        {p.name}
-                      </span>
-                      <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
-                    </div>
-                    <p className="text-sm text-muted leading-relaxed group-hover:text-fg transition-colors">
-                      {p.description}
-                    </p>
-                  </Link>
-                ) : (
-                  <div className="mb-2">
-                    <div className="flex items-baseline justify-between gap-4 mb-1">
-                      <span className="text-sm text-fg">{p.name}</span>
-                      <span className="text-xs font-mono text-dim shrink-0">{p.date}</span>
-                    </div>
-                    <p className="text-sm text-muted leading-relaxed">
-                      {p.description}
-                    </p>
-                  </div>
-                )}
-                <div className="flex gap-4 text-xs font-mono">
-                  {p.slug && (
-                    <Link
-                      href={`/writing/${p.slug}`}
-                      className="text-dim hover:text-muted transition-colors link-underline"
-                    >
-                      write-up ↗
-                    </Link>
-                  )}
-                  {p.github && (
-                    <a
-                      href={p.github}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-dim hover:text-muted transition-colors link-underline"
-                    >
-                      github ↗
-                    </a>
-                  )}
-                  {p.demo && (
-                    <a
-                      href={p.demo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-dim hover:text-muted transition-colors link-underline"
-                    >
-                      demo ↗
-                    </a>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6">
-            <Link
-              href="/projects"
-              className="text-xs font-mono text-dim hover:text-muted transition-colors link-underline"
-            >
-              all projects →
-            </Link>
-          </div>
-        </section>
-      )}
     </div>
+    <FeaturedWork items={featured} />
+    </>
   );
 }
 
