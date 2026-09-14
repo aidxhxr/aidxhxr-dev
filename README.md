@@ -22,6 +22,7 @@ components/
   featured-work.tsx quiet text links to selected projects
   project-article.tsx engineering and product article layout
   research/        PINN reader, contents navigation, interactive figure
+  related-posts.tsx two related posts at the end of every article
 ```
 
 ## Running it locally

@@ -4,20 +4,6 @@
 .publication .site-shell { width: 100%; max-width: 1280px; padding-inline: 40px; margin-inline: auto; }
 .publication .eyebrow { font-family: var(--font-geist-mono); font-size: 10px; font-weight: 400; line-height: 1.7; text-transform: uppercase; letter-spacing: .1em; color: var(--c-muted); }
 .publication a:focus-visible, .publication button:focus-visible, .publication summary:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 5px; }
-.publication .research-artwork { width: 100%; color: var(--c-text); padding: 25px 18px; }
-.publication .artwork-topline, .publication .artwork-bottomline { display: flex; justify-content: space-between; gap: 15px; font-family: var(--font-geist-mono); font-size: 8px; color: var(--c-muted); padding-inline: 15px; }
-.publication .research-artwork svg { display: block; width: 100%; height: auto; margin-block: 17px; }
-.publication .art-grid { stroke: var(--c-border); }
-.publication .art-axis { stroke: var(--c-muted); opacity: .45; }
-.publication .art-rust { stroke: var(--c-accent); }
-.publication .art-olive { stroke: var(--c-olive); }
-.publication .art-ink { stroke: var(--c-text); }
-.publication .art-point-rust { fill: var(--c-accent); }
-.publication .art-point-olive { fill: var(--c-olive); }
-.publication .art-equilibrium { fill: var(--c-text); }
-.publication .art-equilibrium-ring { stroke: var(--c-text); opacity: .35; }
-.publication .art-annotation { font-family: var(--font-geist-mono); font-size: 9px; fill: var(--c-muted); }
-.publication .art-equation { font-family: var(--font-display); font-style: italic; font-size: 15px; fill: var(--c-text); }
 @media (max-width: 900px) { .publication .site-shell { padding-inline: 26px; } }
 @media (max-width: 600px) { .publication .site-shell { padding-inline: 22px; } }
 .publication { padding-bottom: 80px; }
@@ -33,17 +19,6 @@
 .article-resource-links a { border-bottom: 1px solid var(--c-border); padding-bottom: 5px; }
 .article-resource-links a:hover { color: var(--c-accent); border-color: currentColor; }
 .article-resource-links span { margin-left: 14px; }
-.article-cover { display: grid; grid-template-columns: 1fr 1.1fr; max-width: 1130px; margin: 0 auto 82px; padding: 0 34px; background: var(--c-surface); border-top: 1px solid var(--c-border); border-bottom: 1px solid var(--c-border); }
-.cover-copy { display: flex; flex-direction: column; justify-content: center; padding: 35px 15px; }
-.cover-copy .eyebrow { font-size: 9px; }
-.cover-copy > p { font: 400 38px/1.2 var(--font-display); letter-spacing: -.04em; margin: 30px 0; }
-.cover-copy em { color: var(--c-accent); }
-.cover-scale { display: flex; gap: 25px; margin-top: 14px; }
-.cover-scale > span { font: 8px/1.6 var(--font-geist-mono); color: var(--c-muted); }
-.cover-scale strong { display: block; font-size: 27px; font-weight: 400; color: var(--c-text); margin-bottom: 3px; }
-.article-cover .research-artwork { padding-block: 28px; }
-.article-cover .artwork-topline { display: none; }
-.article-cover .artwork-bottomline > span:first-child { visibility: hidden; }
 .article-layout { display: grid; grid-template-columns: 216px minmax(0, 790px); gap: 78px; justify-content: start; position: relative; }
 .article-rail { min-width: 0; }
 .desktop-contents { position: sticky; top: 35px; max-height: calc(100vh - 70px); overflow: auto; padding: 0 10px 20px 0; scrollbar-width: thin; }
@@ -112,7 +87,7 @@
 .anchor-explorer input { display: block; width: 100%; margin: 16px 0 20px; accent-color: var(--c-accent); cursor: ew-resize; }
 .anchor-explorer input:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 5px; }
 .explorer-insight { font-size: 13px; line-height: 1.7; padding-top: 15px; border-top: 1px solid var(--c-border); min-height: 61px; }
-@media (max-width: 1200px) { .article-layout { grid-template-columns: 190px minmax(0, 1fr); gap: 40px; } .article-cover { margin-inline: 40px; } }
+@media (max-width: 1200px) { .article-layout { grid-template-columns: 190px minmax(0, 1fr); gap: 40px; } }
 @media (max-width: 900px) {
   .article-layout { display: block; max-width: 800px; }
   .desktop-contents { display: none; }
@@ -120,13 +95,6 @@
   .mobile-contents summary { display: flex; justify-content: space-between; padding: 16px 0; font-size: 12px; cursor: pointer; }
   .mobile-contents nav { padding: 0 0 15px; }
   .article-rail li a { font-size: 12px; }
-  .article-cover { margin: 0 26px 45px; padding: 0 20px; }
-  .cover-copy { padding-left: 4px; }
-  .cover-copy > p { font-size: 29px; }
-  .cover-copy .eyebrow { font-size: 7px; }
-  .cover-scale { gap: 15px; }
-  .cover-scale > span { font-size: 6px; }
-  .cover-scale strong { font-size: 23px; }
 }
 @media (max-width: 600px) {
   .publication { padding-bottom: 55px; }
@@ -136,15 +104,6 @@
   .article-deck { font-size: 15px; line-height: 1.7; margin: 23px 0; }
   .article-byline { font-size: 9px; gap: 8px; }
   .article-resource-links { font-size: 10px; margin-block: 23px 35px; gap: 17px; }
-  .article-cover { grid-template-columns: 1fr; margin-inline: 22px; padding: 0 22px; }
-  .cover-copy { padding: 26px 0 6px; }
-  .cover-copy .eyebrow { font-size: 7px; }
-  .cover-copy > p { margin: 22px 0 10px; font-size: 32px; }
-  .cover-scale { justify-content: space-between; margin-block: 12px 6px; }
-  .cover-scale > span { font-size: 7px; }
-  .article-cover .research-artwork { padding: 5px 0 20px; }
-  .article-cover .artwork-bottomline { justify-content: flex-end; }
-  .article-cover .artwork-bottomline > span:first-child { display: none; }
   .article-prose { font-size: 15px; line-height: 1.85; }
   .article-prose > p:first-child { font-size: 19px; }
   .article-prose h2 { font-size: 29px; margin-top: 49px; padding-top: 25px; }
@@ -165,7 +124,6 @@
   .site-header, .site-footer, .article-rail, .reading-progress, .article-breadcrumb, .article-resource-links, .article-related { display: none !important; }
   .article-header { padding-top: 0; }
   .article-category { margin-top: 0; }
-  .article-cover { margin: 25px 0; break-inside: avoid; }
   .article-layout { display: block; padding: 0; }
   .article-prose { font-size: 11pt; }
   .article-prose h2 { break-after: avoid; }

@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Post } from "@/lib/posts";
 import type { Project } from "@/lib/projects";
 import PinnResearch from "@/content/writing/pinn-research.mdx";
-import HeroArtwork from "@/components/hero-artwork";
 import { researchComponents } from "@/components/mdx/research-components";
 import ArticleNavigation from "./article-navigation";
 import RelatedPosts from "../related-posts";
@@ -35,18 +34,6 @@ export default function ResearchArticle({ post, project }: { post: Post; project
           <a href="#sources">sources <span aria-hidden="true">↓</span></a>
         </div>
       </header>
-      <div className="article-cover">
-        <div className="cover-copy">
-          <span className="eyebrow">WNT–RA–HOX / summer 2026</span>
-          <p>The trajectory is visible.<br /><em>The mechanism is not.</em></p>
-          <div className="cover-scale">
-            <span><strong>07</strong>State variables</span>
-            <span><strong>36</strong>Unknown parameters</span>
-            <span><strong>04</strong>Disease regimes</span>
-          </div>
-        </div>
-        <HeroArtwork />
-      </div>
       <div className="article-layout site-shell">
         <ArticleNavigation />
         <article id="article-body" className="article-prose">
