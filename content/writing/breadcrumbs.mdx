@@ -1,94 +1,55 @@
-Breadcrumbs is a social app I have been designing and partly building around a small daily exchange: a few things from your day, shared with a specific group, released together, and gone after 24 hours by default.
+Breadcrumbs is an app I've been designing and half-building. The rule is that you get five posts a day per group, they go out at a time the group picks, and they're gone in 24 hours.
 
-My favorite group chats rarely feel like publishing. Someone sends a terrible library photo, someone else sends dinner, and that is enough. I wanted to make that easier without creating another feed to maintain.
+The idea came from noticing that the group chats I actually like are the ones where nobody's performing. Nothing about the software encourages that. It just happens to be five people who know each other. I wanted to see whether you could get there on purpose.
 
-This is an unfinished prototype. The clearest development record is from March 2026: photo upload, draft saving, and a daily counter. Scheduled release, group rules, and the location trail remain design work.
+## five
 
-## The rule I started with
+Five is small enough that you have to choose. If you posted every coffee you'd be out by noon, so you don't, and what's left is the stuff you'd have mentioned to a friend anyway. The feed on the other side is short because the limit made it short, not because something decided what to show you.
 
-The original rule was five items per day, per group. Text, photos, and short videos would collect during the day, publish at a time chosen by the group, and expire a day later. Each group would have its own audience and schedule.
+BeReal is one post a day, and one is worse than five in a way I didn't expect until I used it. When you only get one moment you start waiting for a good one, and now you're performing again, just with more anxiety about it. Stories are unlimited, which is the thing I'm trying to get away from.
 
-Five was intuition: enough room for ordinary details without an endless stream. I had no experiment showing it was right.
+I picked five because it felt right, which is not a great reason. It might be three. It might be different for a family group than for four friends who see each other every day. I don't have a way to know that without people using it.
 
-That left a contradiction I had not resolved. Some early notes treat five as a maximum. The draft implementation notes describe reaching five as the condition for being ready to publish. Those are different products. A limit says “you can stop here.” A requirement says “you still owe us two photos.”
+There's also a contradiction in my own notes I only noticed rereading them. The design doc says five is a cap. The implementation notes say hitting five is what makes your day ready to publish. Those are different apps. One says you can stop here; the other says you still owe two photos, and the second one recreates exactly the pressure I was trying to get rid of. It's a cap. I think.
 
-The second version could recreate the pressure I wanted to avoid. I need to test whether five feels like permission to share less or an obligation to fill every slot.
+## groups instead of a feed
 
-## What reached the prototype
+You don't have one Breadcrumbs feed. You have a family group, a close friends group, whatever your team is. Each one is separate, with its own posting time and its own norms.
 
-The March 13 development notes describe a photo flow backed by Supabase. A helper reads the captured image from the device, uploads it to storage, creates a post with `draft` status, and increments the day's submission count. The camera pane shows a loading state followed by a saved or failed badge. The feed shows a per-group count such as two of five drafts saved.
+I share differently with my parents than with my friends from home than with people I play ball with, and every platform that flattens those into one audience makes me post less, because I'm writing for the most conservative reader in the room. Separate groups fix that by not creating the problem. What goes in one doesn't appear in another, and that's a rule simple enough that you can hold it in your head, which I think matters more for trust than any privacy settings page.
 
-The group IDs were explicitly placeholders. A working capture interaction does not establish invitations, private membership, or automatic publication.
+## someone has to set the time
 
-| Part | What the record supports |
-| --- | --- |
-| Capture and upload | Notes describe a photo-to-storage path and UI feedback |
-| Draft saving | Notes describe a post insert and daily counter update |
-| Group selection | UI wiring described; group IDs were placeholders |
-| Data model | Proposed SQL for membership, posts, reactions, and daily counts |
-| Scheduled publishing and expiry | Designed behavior; no verified running scheduler in the record |
-| Location trail | Proposed table and feature idea, not a demonstrated feature |
+Each group has a leader who picks the daily posting window. Miss it and your five don't go out that day. Nothing else happens.
 
-## A group is the audience
+I like this because it puts a person in the role that an algorithm would otherwise take. A human decided this group posts at 9pm, and if it's wrong you can tell them. They can move it, let someone off, or shut the group down.
 
-Combining my family, friends from home, and basketball friends into one audience makes me write for whoever needs the most explanation, or not post.
+It's also the part most likely to break. What happens when the leader graduates or just stops opening the app? Does the window need to be the same every day? Should there be a fallback? What does 9pm mean when half the group is traveling? The schema stores a time of day and no timezone, which is its own answer to that question and not a good one. I've written three versions of this in my notes and none of them are obviously right, and I suspect the answer only shows up once a group has actually been using it for a few months.
 
-Breadcrumbs would ask me to choose the group before posting. Memberships connect people to groups, and posts carry both an author and a group. Daily limits are scoped by person, group, and date: family posts should not use my friends-group slots.
+## expiry
 
-That model still needs rules for leaving a group, removing a member, and deciding whether new members can see retained posts. “Private groups” is a product promise; the database has to enforce the same boundary on every read and write.
+Posts disappear after a day by default. The reasoning is the same as everywhere else it's been done: when something is permanent you edit it, and when it's gone tomorrow you don't.
 
-## One post has a lifecycle
+Groups can turn retention on if they want. Parents tracking a kid probably want to keep everything. Four people posting their Tuesday evenings probably don't. Default off, opt-in per group. If a group does turn it on, everyone in it should know before they post, or the whole audience-you-can-hold-in-your-head thing is a lie.
 
-The draft schema gives a post four states:
+## the location trail
 
-```text
-draft → queued → published → expired
-```
+The one feature I'm actually excited about, which is also the one I'm least sure about: optional background location logging that posts a map of your day to your premium groups in the evening.
 
-A draft is private preparation; a queued post is ready for release. Publication begins visibility, and expiry ends it. Saving something and showing it to other people are different actions.
+It removes the part where you have to remember to post. And a trail is a different kind of information than a photo. You didn't curate it. It shows you went to the library at two and left at six and stopped somewhere on the way back, and combined with three photos and a line of text it says more about a day than any of those separately.
 
-A separate `daily_submissions` counter preserves how many slots someone used even after deleting a post. Whether deletion should consume a slot is a design choice, not something a technical convenience should settle.
+It's also the feature that requires the most trust, and I don't think it should be on by default or available in every group. Right now I have it gated behind the premium tier, mostly because that limits who's exposed to it, which is a strange reason to charge for something. It's not going in the first version people touch.
 
-A counter introduces a consistency problem too. If saving the post succeeds and incrementing the count fails, the interface and database disagree. If a request is retried, the app should not count it twice. A real implementation needs one reliable operation for reserving the slot and inserting the post. The notes describe both actions, but do not establish those guarantees.
+## what's actually built
 
-## Someone has to set the time
+Less than the above. As of March there's a photo flow on Supabase: the camera pane takes a picture, a helper uploads it to storage, inserts a post with status `draft`, and bumps a per-user, per-group, per-day counter. The pane shows loading, then saved or failed, and the feed shows "2 of 5" for the group. The group IDs in that build are hardcoded placeholders.
 
-A group leader would choose the release time. Someone can explain the choice and change it after a conversation, which seems manageable for a few friends.
+A post has four states in the schema, `draft`, `queued`, `published`, `expired`, and the counter is its own table so deleting a post doesn't give you the slot back. Whether it should is a product question I haven't answered; right now it's just what the counter does. The upload and the counter bump are two separate writes with nothing making them atomic, so a retry can count twice or a failure can leave the UI and the database disagreeing. And the read policy on posts checks that you're in the group and nothing else, which means it would happily return drafts and expired posts to any member. That's a draft policy, not a leak, because nobody's on it. It's the first thing to fix before anyone is.
 
-What if the leader stops using the app? What does 9 p.m. mean when half the group is traveling? Do late publications still get 24 hours?
+No scheduler. No publish job. Nothing deletes an expired photo from storage yet. "Gone" currently means a status field.
 
-The proposed table stores a time of day without a group timezone. I still need to define that timezone, the date of each daily batch, and a release operation that is safe to retry.
+## the part I have no answer to
 
-I also remain unsure about missing the window. Withholding that day's batch might create a shared rhythm, or just punish the person with a long lab or an evening shift. The rule needs to earn its place through use.
+A social app with no users is nothing, and this one is worse than most in that respect, because it only works with people you actually know. You can't seed it with strangers. Every group has to arrive more or less intact.
 
-## Expiry needs a precise meaning
-
-The default is 24-hour visibility, with retention a group choice. I hope temporary posts feel easier to send, but have no user evidence yet.
-
-“Gone” could mean hiding an item, denying image access, or deleting both the row and stored file. A status field alone does not make a photo disappear.
-
-The early SQL illustrates this. Its proposed post-read policy checks group membership, but does not itself restrict results to published, unexpired posts. It is a design draft, not a reviewed privacy implementation. Before using real groups, I would need to check draft visibility, storage access, and deletion behavior together.
-
-If a group enables retention, members should know before contributing. A hidden setting would defeat the point of a simple audience model.
-
-## The location trail can wait
-
-An optional map, assembled from background location samples, could give photos context without making someone narrate every stop.
-
-It also carries much more information than a deliberately selected photo. A route can reveal where someone lives, studies, or spends an evening. A premium toggle does not solve the audience or consent questions.
-
-The location table belongs to a user without specifying which groups receive which parts of a trail. Automatic sharing needs audience selection, a preview, stop removal, and an obvious off switch. I would leave it out of the first trial.
-
-## What I need to learn next
-
-The next useful test is a few existing groups using a small version: choose an audience, save a few items, release them together, and let them expire. Location history and elaborate reactions are unnecessary to learn whether that exchange is enjoyable.
-
-I would watch for less glamorous signals than time spent in the app. Does someone post because they want to, or because the counter is unfinished? Do people understand who will see a draft and when? Does the fixed time help a group reconnect, or become another deadline? When someone skips a day, do they return comfortably?
-
-The hard part is getting a group to arrive together and stay. I cannot seed this with strangers. For now, the goal is a small thing a few people like, then letting their experience change the rules.
-
-## Sources and scope
-
-This note draws on my original Breadcrumbs write-up, its revision history in the [website repository](https://github.com/aidxhxr/aidxhxr-dev/commits/main/content/writing/breadcrumbs.mdx), and my March 13, 2026 development notes. The notes record draft-upload work and proposed Supabase SQL; they do not verify deployment, active users, scheduled jobs, or a complete authorization system.
-
-Proposed behavior is separate from documented prototype work. The unresolved rules and next steps are my design assessment, not results from a user study. A [source-scope summary](/writing/breadcrumbs/evidence.md) records those boundaries without publishing the raw development notes.
+I don't have a plan for that. The features are the easy part and I know it. But the small, time-limited, no-audience version of sharing is the only kind I've enjoyed in years, and it seems worth trying to build the thing that defaults to it.
