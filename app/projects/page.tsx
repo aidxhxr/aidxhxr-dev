@@ -56,7 +56,7 @@ export default function ProjectsPage() {
                 </span>
               ))}
             </div>
-            {(p.slug || p.github || p.demo) && (
+            {(p.slug || p.github || p.demo || p.press) && (
               <div className="flex gap-4 text-xs font-mono">
                 {p.slug && (
                   <Link
@@ -84,6 +84,16 @@ export default function ProjectsPage() {
                     className="text-dim hover:text-muted transition-colors link-underline"
                   >
                     demo ↗
+                  </a>
+                )}
+                {p.press && (
+                  <a
+                    href={p.press}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-dim hover:text-muted transition-colors link-underline"
+                  >
+                    press ↗
                   </a>
                 )}
               </div>
