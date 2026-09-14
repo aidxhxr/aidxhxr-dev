@@ -1,130 +1,63 @@
-Student organizations tend to accumulate the same unofficial infrastructure: a group chat, a pinned message that is no longer accurate, and one person who remembers what everyone agreed to do. I wanted a task board that made that work visible without giving the group another complicated system to maintain.
+Every student org I've been in runs on the same stack: a group chat, a pinned message that went stale in October, and one person who remembers what everyone agreed to. Notion works if someone fills it in. Trello works but it lives off to the side of wherever the group actually talks, so it slowly stops matching reality.
 
-TickFlow is a Next.js application for projects, tickets, assignments, and a shared Kanban board. It uses Prisma and Postgres, with deployment configuration for SCCS infrastructure. The interface came first; connecting it to real data exposed the more interesting questions underneath.
+TickFlow is the boring version. Projects, tasks, who's on what, what state it's in. It runs on SCCS infrastructure at `tickflow.sccs.swarthmore.edu`. Damian did most of the deploy pipeline; the app and the schema are mine.
 
-This account follows the public repository through June 2, 2026. It has a database-backed task-management core, but several screens are still prototypes and authentication is unfinished. That distinction is a useful part of the story.
+## the schema took the longest
 
-## From interface sketches to working mutations
+`prisma/schema.prisma` is about 80 lines and I rewrote it three times.
 
-The history begins in late April with a sidebar, themes, dashboard sketches, project pages, and an initial board. Prisma arrived in early May. Ticket and project creation became connected to the database later that month.
+The first version hung assignees off the task as an `Int[]` of user IDs. Postgres supports it, Prisma exposes it, and it's fine until you want to answer "what is this person assigned to." Then you're pulling every task and filtering in application code. The fix was a `TaskAssignee` join table keyed on `([taskId, userId])`. Membership works the same way: `ProjectMember`, composite key, plus a role that's either `lead` or `member`. Storing the role is not the same as enforcing it, and nothing enforces it yet.
 
-| Period | What landed | What changed about the project |
-| --- | --- | --- |
-| April 24–28 | App scaffold, navigation, themes, dashboard and board sketches | The workflow became something I could see and click through |
-| May 4–5 | Prisma setup and relational schema | Projects, people, and assignments acquired an explicit data model |
-| May 24–25 | Database connection, ticket and project creation, status controls | Important interactions began writing real records |
-| May 28–30 | Board refinements, member views, search, navigation, deployment work | Multiple views had to agree about the same data |
-| May 30–June 2 | Release-pipeline revisions and component fixes | Running and maintaining the app became part of the work |
+Nothing clever about that. I just didn't think about the reverse query when I wrote it the first time, and rewriting relations after routes already depend on them is annoying in a way that's hard to appreciate until you've done it.
 
-This was shared work. My contributions focused on the application and data model; Damian contributed much of the deployment pipeline. The repository is a better guide to that division than treating every file in the stack as something I wrote alone.
+The one decision I still like is putting `blocked` and `shipped` in the status enum instead of making them boolean flags:
 
-## The relationships underneath the board
-
-The core schema has five models: `User`, `Project`, `Task`, `ProjectMember`, and `TaskAssignee`. A task belongs to one project, while people can belong to several projects and be assigned to several tasks.
-
-```text
-User ── ProjectMember ── Project
-                          │
-                         Task
-                          │
-User ─── TaskAssignee ─────┘
 ```
-
-The two join tables represent different facts. Project membership says someone belongs to the group doing the work. A task assignment says they are responsible for a specific piece of it. Removing an assignment should not remove project membership.
-
-Each join table has a composite primary key, preventing the same user–project or user–task pair from appearing twice. `ProjectMember` also carries a `lead` or `member` role. That creates a place to express permissions later, although storing a role does not enforce one.
-
-My earlier notes described experimenting with an array of assignee IDs. The first committed application schema already uses join tables, so the published history does not establish that earlier iteration. The reason to prefer explicit relationships here is concrete: they give the database foreign keys and uniqueness constraints, and make queries in either direction straightforward. Postgres can query arrays; arrays were not inherently unqueryable.
-
-There is also a smaller identity decision. Projects have both a numeric ID and a human-readable slug. The later navigation work uses the ID in routes, avoiding dependence on display strings containing spaces. The current schema no longer makes the slug unique. That means the two fields should not be treated as interchangeable identifiers.
-
-## Creating a ticket without a separate write API
-
-Project and ticket creation use Next.js server actions. A ticket form collects its project, title, description, priority, status, optional due date, and assignees. The action reads that `FormData` and creates the task with nested assignment records through Prisma.
-
-Project creation follows the same pattern: create the project and its selected memberships in one nested write, then redirect to the project list. The current action assigns each selected person the `member` role; it does not implement a full role-management workflow.
-
-The actions call `revalidatePath` after writes so affected pages can fetch updated data. This keeps the mutation layer small. Read-only endpoints still exist for search and the sidebar, so “server actions” does not mean the application has no HTTP API.
-
-The important unfinished work is input handling and authorization. The actions currently use TypeScript casts and basic conversions rather than a comprehensive runtime validation layer. They also lack checks tying the caller to the relevant project. A form that successfully writes to the database is only the beginning of a reliable mutation path.
-
-## A board that responds before the database does
-
-The board has six columns:
-
-```text
 backlog | todo | inprogress | blocked | done | shipped
 ```
 
-I wanted `done` and `shipped` to remain separate: finishing a draft and publishing it are different moments. Dashboard totals combine both into completed work, while the board preserves the distinction. `blocked` is a primary state, which is simple to display but does not preserve whether the task was previously waiting or in progress.
+Blocked-and-in-progress isn't a state that means anything, and if it's a flag you have to keep deciding what it means alongside every other status. `done` is "the person finished it," `shipped` is "it's actually live," and student orgs need both because those are usually weeks apart. The dashboard counts both as complete. The board keeps them apart.
 
-The board loads tasks on the server, including project titles and assignee names, then groups them into columns on the client. Dragging a card immediately removes it from one local group and adds it to another. The status action runs afterward. That optimistic move makes the interface feel responsive.
+One smaller thing: projects have a numeric id and a slug, and I started routing by slug, which breaks the moment a project name has a space in it. Routes use the id now. The activity table still builds its links from slugs, so that's a half-finished migration with one broken path in it.
 
-It also exposes a real gap: the drag handler has no explicit failure rollback. If the update rejects, the local board can temporarily tell a different story from the database. The table views use a separate `useOptimistic` status dropdown and a pending transition, but neither path is a substitute for a clear error message and reconciliation strategy.
+## auth is the part I haven't done
 
-The drag implementation uses native HTML drag events. I would still want keyboard and touch alternatives before calling that interaction complete. A polished desktop gesture should not be the only way someone can move a task.
+There's a `password` column on `User` that nothing writes to yet. I keep circling this and not landing.
 
-## Finding work across several views
+The honest reason is that I started reading about JWTs because they sounded like the thing you're supposed to use, got a few hours in, and realized that for an app where every user is a Swarthmore student hitting one server, a session row in Postgres does everything I need with less to get wrong. The stateless pitch doesn't buy me much when I'd want revocation anyway. So I stopped, and now it's the last real gap. Probably sessions. Possibly whatever SCCS already uses for SSO, if I can get access to it.
 
-The project page, issues table, board, dashboard, activity page, and member view all look at overlapping data. Their value is giving people different ways into the same work, not creating six independent sources of truth.
+Until then nothing checks who you are. The server actions don't check that you're in the project you're writing to, the assignee picker shows every user instead of the project's members, and the "My Issues" page shows all issues with a note saying so.
 
-Search adds a small read endpoint. After a 200-millisecond debounce, the header requests case-insensitive title matches, capped at five projects and five tasks. The database queries run concurrently. Selecting a task result opens its containing project; there is no dedicated task-detail route in this path.
+## what's there
 
-That implementation is enough for a small dataset, but its limitations are visible. A newer query cancels the pending debounce timer, not an already-running request. A late response can therefore replace newer results. Request cancellation or a query-version check would make the displayed results agree with what is currently typed.
+You can make a project, add people, file tasks, assign them, move them across the board. The board loads tasks on the server with project titles and assignee names and groups them into columns on the client. Dragging a card moves it locally first and fires the status action after, which feels right and has no rollback: if the write fails the board and the database disagree until you reload. Drag is native HTML drag events, so no touch and no keyboard.
 
-Route changes need the same care. Search and the sidebar use numeric project IDs, but the activity table still builds project links from slugs. The project page parses the route as a number. That mismatch is an unfinished migration between conventions, and a good candidate for a simple navigation regression check.
+Search is a 200 ms debounce, then one endpoint that does a case-insensitive title match capped at five projects and five tasks, both queries in parallel. A new keystroke cancels the pending timer but not a request that's already out, so a slow old response can land on top of a newer one. Small dataset, hasn't bitten me, will.
 
-## Which screens are backed by data?
+The activity page is the newest 50 tasks with their current status. It's not a history. There is no table of status changes, so "who moved this yesterday" has no answer. The settings page is a real theme picker and real database counts next to a workspace-name field that shows "saved" and saves nothing, notification toggles that are local state, and security controls that don't do anything. I'd rather say that than have someone click them.
 
-The repository supports a more precise answer than “the app works”:
+## deploying it
 
-| Surface | What the code does |
-| --- | --- |
-| Projects and tickets | Queries Postgres; creation and status changes persist through server actions |
-| Dashboard and members | Computes counts and assignment summaries from database records |
-| Activity | Shows the newest 50 tasks and current workload totals |
-| My Issues | Shows all tasks, with an explicit note that personalization awaits authentication |
-| Settings | Mixes a working theme selector and database statistics with local-only preference and security controls |
+The app is Next.js 16 with server actions rather than a REST layer, which means most mutations are a function in `actions/actions.ts` that writes through Prisma and calls `revalidatePath`. Ninety-one lines for the whole file. I expected to outgrow that by now. There are two read endpoints for search and the sidebar, so it's not zero HTTP API, but close.
 
-The activity page exists, contrary to my earlier write-up. It is not an event history: rows are ordered by task creation time and show current status. There is no stored sequence of status changes from which to answer “who moved this yesterday?”
+Deployment is Docker Swarm behind Traefik, pinned to a specific node:
 
-Several settings illustrate the difference between a screen and a feature. The workspace-name Save button briefly displays a saved state without persisting a name. Notification switches remain local component state. The security controls do not implement password changes, session revocation, or two-factor authentication. They are interface sketches, not account-management capabilities.
+```yaml
+placement:
+  constraints:
+    - node.hostname == gull
+```
 
-Keeping that distinction explicit matters more than adding another settings tab. Someone should be able to tell whether a control changes the application or merely demonstrates how it might look.
+The pinning is because the Postgres volume is a bind mount on that machine. If the service gets scheduled anywhere else it comes up with an empty database, which I found out the way you'd expect.
 
-## Identity is still the main missing piece
+The container runs `prisma migrate deploy` before starting the server. This is the part I'd push back on if someone else did it, since a failed migration takes the app down instead of just failing a deploy step, but I'm the only one deploying and it means I can't forget.
 
-The schema has a password field and membership roles, but the inspected application does not implement a complete sign-in or project-authorization layer. Its “My Issues” page says so directly.
+The pipeline itself: a version tag kicks off a GitHub build, a mirror workflow copies the repo to SCCS GitLab, and GitLab builds the image and runs `docker stack deploy`. There was a brief image-watcher approach in between that got removed. The mirror fires when the build workflow completes, not when it succeeds, despite a comment in the file that says otherwise. I know because I read the comment first.
 
-Before using it for private organizational work, I need to connect an authenticated identity to every relevant read and mutation. The app should check membership, enforce whatever a lead can do differently, and restrict assignees according to a deliberate project policy. The current ticket picker receives the full user list rather than filtering it to project members.
+---
 
-I had considered both token-based authentication and database-backed sessions in my earlier notes. The useful next decision is less about the format of a credential than the behavior around it: signing in, signing out, revocation, project membership, and access after someone leaves a group. Those paths need to work together.
+Current state: you can make a project, add people, file tasks, assign them, move them across the board. No notifications, no auth, no activity history. Next is auth, because without it none of the rest is real.
 
-## Shipping the app meant thinking about storage
+## sources
 
-The checked-in Swarm configuration runs the application and Postgres behind Traefik, with the database on an internal network. Both services are pinned to a particular SCCS node. Postgres uses a local volume backed by a directory on that host.
-
-The placement constraint makes the storage assumption explicit. Rescheduling the database onto another machine would not automatically move its files. This setup therefore does not provide transparent database failover.
-
-The Swarm service command runs `prisma migrate deploy` before starting Next.js. If migration fails, the application does not start. That couples schema changes to rollout, but a more mature deployment would expose migration results separately and have a tested recovery procedure.
-
-The release history includes a brief image-watcher approach that was subsequently removed. At the reviewed commit, version tags trigger a GitHub build, a mirror workflow copies to SCCS GitLab, and GitLab builds the image and runs `docker stack deploy`. The mirror triggers when the build workflow completes; its implementation does not check that the build succeeded, despite a comment implying that guarantee.
-
-Those are configuration facts, not a measured uptime record or a fresh deployment test. They show the operational work around even a small app, including places where a reassuring comment is stronger than the actual condition.
-
-## What I would finish next
-
-I would finish identity, membership checks, and runtime validation first. Then I would make unsuccessful mutations visible, reconcile optimistic state, and check navigation across every task view. Only after those paths were dependable would I prioritize notifications or a persistent activity log.
-
-The next product test is modest: can one group use it through a real project without someone having to maintain the board for everyone else? Completion percentages cannot answer that. Neither can a working database write.
-
-TickFlow has been useful precisely because the product is ordinary. It gave me a concrete way to learn relational modeling, server and client state, and deployment assumptions. The remaining work is specific enough to tackle without pretending the prototype is already a finished service.
-
-## Sources and scope
-
-This account follows [TickFlow at commit `a9ab338`](https://github.com/swat-sccs/tickflow/tree/a9ab338ef71adb25b2eb4e16fabe1b2b03ea4dbc), the June 2, 2026 main-branch snapshot inspected in September. The repository establishes the April–June implementation timeline. Earlier personal notes supply context where identified; no production database, user activity, or live deployment was inspected for this article.
-
-- **History and data model:** [commit history](https://github.com/swat-sccs/tickflow/commits/a9ab338ef71adb25b2eb4e16fabe1b2b03ea4dbc), [Prisma schema](https://github.com/swat-sccs/tickflow/blob/a9ab338/prisma/schema.prisma), and [server actions](https://github.com/swat-sccs/tickflow/blob/a9ab338/actions/actions.ts).
-- **Interaction and navigation:** [board state](https://github.com/swat-sccs/tickflow/blob/a9ab338/components/board-client.tsx), [status dropdown](https://github.com/swat-sccs/tickflow/blob/a9ab338/components/status-select.tsx), [search endpoint](https://github.com/swat-sccs/tickflow/blob/a9ab338/app/api/search/route.ts), and [header search](https://github.com/swat-sccs/tickflow/blob/a9ab338/components/app-header.tsx).
-- **Implemented views and remaining placeholders:** [activity query](https://github.com/swat-sccs/tickflow/blob/a9ab338/app/activity/page.tsx), [activity links](https://github.com/swat-sccs/tickflow/blob/a9ab338/components/activity-tabs.tsx), [issues page](https://github.com/swat-sccs/tickflow/blob/a9ab338/app/issues/page.tsx), and [settings](https://github.com/swat-sccs/tickflow/blob/a9ab338/components/settings-client.tsx).
-- **Release path:** [Swarm configuration](https://github.com/swat-sccs/tickflow/blob/a9ab338/compose.swarm.yml), [GitHub mirror](https://github.com/swat-sccs/tickflow/blob/a9ab338/.github/workflows/mirror.yml), and [GitLab pipeline](https://github.com/swat-sccs/tickflow/blob/a9ab338/.gitlab-ci.yml).
+The repo is [swat-sccs/tickflow](https://github.com/swat-sccs/tickflow), as of commit `a9ab338`. The [schema](https://github.com/swat-sccs/tickflow/blob/a9ab338/prisma/schema.prisma), the [actions](https://github.com/swat-sccs/tickflow/blob/a9ab338/actions/actions.ts), the [board](https://github.com/swat-sccs/tickflow/blob/a9ab338/components/board-client.tsx), the [search route](https://github.com/swat-sccs/tickflow/blob/a9ab338/app/api/search/route.ts), the [Swarm file](https://github.com/swat-sccs/tickflow/blob/a9ab338/compose.swarm.yml), and the [mirror workflow](https://github.com/swat-sccs/tickflow/blob/a9ab338/.github/workflows/mirror.yml) with its comment.
