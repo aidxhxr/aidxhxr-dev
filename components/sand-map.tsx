@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { HOME, INFLUENCES, type Place } from "@/lib/influences";
+import { HOME, NOTES, type Spot } from "@/lib/influences";
 import { LAT_BOTTOM, LAT_TOP, MASK_B64, MASK_H, MASK_W } from "@/lib/world-mask";
 
 const HOLD_MS = 14000;
@@ -25,7 +25,7 @@ const K_HOME = 2;
 type Grain = { x: number; y: number; v: number; ty: number };
 type Particle = { x: number; y: number; vx: number; vy: number; c: number; ttl?: number };
 type Courier = { x0: number; y0: number; x1: number; y1: number; t0: number; bend: number };
-type Pin = { place: Place; x: number; y: number; home: boolean };
+type Pin = { x: number; y: number; home: boolean };
 
 type Sim = {
   cols: number;
@@ -61,7 +61,7 @@ const isLand = (mx: number, my: number) => {
   return ((MASK[i >> 3] >> (i & 7)) & 1) === 1;
 };
 
-const project = (p: Place, cols: number, rows: number) => ({
+const project = (p: Spot, cols: number, rows: number) => ({
   x: Math.round(((p.lon + 180) / 360) * cols),
   y: Math.round(((LAT_TOP - p.lat) / (LAT_TOP - LAT_BOTTOM)) * rows),
 });
@@ -101,9 +101,9 @@ function buildTargets(cols: number, rows: number) {
     }
   }
   const pins: Pin[] = [];
-  const stamp = (p: Place, home: boolean) => {
+  const stamp = (p: Spot, home: boolean) => {
     const { x, y } = project(p, cols, rows);
-    pins.push({ place: p, x, y, home });
+    pins.push({ x, y, home });
     for (const [dx, dy] of home ? DIAMOND : PLUS) {
       const cx = x + dx;
       const cy = y + dy;
@@ -113,7 +113,7 @@ function buildTargets(cols: number, rows: number) {
       kind[i] = home ? K_HOME : K_PIN;
     }
   };
-  for (const p of INFLUENCES) stamp(p, false);
+  for (const p of NOTES) stamp(p, false);
   stamp(HOME, true);
 
   const queues = new Map<number, number[]>();
@@ -474,9 +474,7 @@ export default function SandMap() {
         tip.hidden = true;
         return;
       }
-      tip.textContent = pin.home
-        ? `${pin.place.place} · home`
-        : `${pin.place.name} · ${pin.place.place}`;
+      tip.textContent = `${HOME.place} · home`;
       tip.hidden = false;
       const rect = canvas.getBoundingClientRect();
       const px = (pin.x / (sim?.cols ?? 1)) * rect.width;
@@ -487,18 +485,10 @@ export default function SandMap() {
       tip.style.top = `${py}px`;
     };
 
-    const pinNear = (x: number, y: number) => {
+    const homeNear = (x: number, y: number) => {
       if (!sim) return null;
-      let best: Pin | null = null;
-      let bd = 36;
-      for (const p of sim.pins) {
-        const d = (p.x - x) ** 2 + (p.y - y) ** 2;
-        if (d < bd) {
-          bd = d;
-          best = p;
-        }
-      }
-      return best;
+      const h = sim.pins[sim.pins.length - 1];
+      return (h.x - x) ** 2 + (h.y - y) ** 2 < 36 ? h : null;
     };
 
     let lastTick = 0;
@@ -535,7 +525,7 @@ export default function SandMap() {
       pointer.vy = Math.max(-4, Math.min(4, pointer.active ? ny - pointer.y : 0));
       pointer.x = nx;
       pointer.y = ny;
-      const near = pinNear(nx, ny);
+      const near = homeNear(nx, ny);
       pointer.active = !near;
       if (near !== hovered) showTip(near);
     };
@@ -547,10 +537,9 @@ export default function SandMap() {
     };
     const onDown = (e: PointerEvent) => {
       const { x, y } = toCell(e);
-      const near = pinNear(x, y);
+      const near = homeNear(x, y);
       if (near) {
         showTip(near);
-        if (near.place.url && e.pointerType === "mouse") window.open(near.place.url, "_blank", "noopener");
         return;
       }
       blast.x = x;
