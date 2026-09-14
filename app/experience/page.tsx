@@ -47,7 +47,7 @@ const experience: Entry[] = [
     links: [{ label: "github", href: "https://github.com/swat-sccs" }],
   },
   {
-    company: "ai safety initiative at swarthmore",
+    company: "swarthmore ai safety initiative (saisi)",
     url: "https://saisi.club",
     role: "founder & lead",
     period: "aug 2026 – present",
