@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { posts, type Post } from "@/lib/posts";
 import type { Project } from "@/lib/projects";
 import ArticleNavigation from "./research/article-navigation";
-import WorkVisual from "./work-visual";
 
 export default function ProjectArticle({ post, project, children }: { post: Post; project?: Project; children: ReactNode }) {
   const related = posts.filter(p => p.slug !== post.slug).sort((a, b) => Number(b.kind === post.kind) - Number(a.kind === post.kind)).slice(0, 2);
@@ -25,7 +24,6 @@ export default function ProjectArticle({ post, project, children }: { post: Post
           {project?.github && <a href="#sources">sources <span aria-hidden="true">↓</span></a>}
         </div>
       </header>
-      <figure className="project-cover"><WorkVisual slug={post.slug} /><figcaption>illustration, not a screenshot</figcaption></figure>
       <div className="article-layout site-shell">
         <ArticleNavigation key={post.slug} />
         <article id="article-body" className="article-prose">{children}</article>
