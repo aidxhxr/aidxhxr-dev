@@ -11,9 +11,9 @@ export default function ResearchArticle({ post, project }: { post: Post; project
     <div className="publication research-publication" id="article-top">
       <header className="article-header site-shell">
         <div className="article-breadcrumb">
-          <Link href="/projects">Projects</Link><span aria-hidden="true">/</span><span>Research</span>
+          <Link href="/projects">projects</Link><span aria-hidden="true">/</span><span>{project?.name}</span>
         </div>
-        <p className="eyebrow article-category">Scientific machine learning</p>
+        <p className="eyebrow article-category">{post.category}</p>
         <h1>{post.title}</h1>
         <p className="article-deck">{post.description}</p>
         <div className="article-byline">
