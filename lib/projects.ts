@@ -13,7 +13,7 @@ export const projects: Project[] = [
   {
     name: "Company Brain",
     description:
-      "AI assistant for small businesses, built with Silkroad Innovation Hub. Selective ingestion turns conversations into linked Markdown notes, with retrieval, owner approvals, and shared workflows across web chat, email, and iMessage.",
+      "AI assistant for small businesses, built with Silkroad Innovation Hub. Every chat gets triaged and distilled into a wikilinked Markdown vault behind an approval queue; reaches owners over iMessage and email with a budget monitor, audit log, and trust ramp in front of anything that sends.",
     github: "https://github.com/Silkroad-Innovation-Hub/FDE-company-brain",
     slug: "company-brain",
     date: "Sep 2026",
@@ -22,7 +22,7 @@ export const projects: Project[] = [
   {
     name: "GrokEye",
     description:
-      "A Grokathon prototype combining voice, visual grounding, and browser tracking. Local detection and hedged model calls reduce waiting; the write-up separates live behavior from the rehearsed demo paths.",
+      "Voice-driven AR coaching over a live camera feed, top 6 at xAI's Grokathon. Web Speech in, Grok 4.5 for vision and answers, xAI TTS out, three hedged requests to make box calls fast, and a dependency-free TypeScript tracker to keep them on the object.",
     github: "https://github.com/dereky925/GrokEye",
     slug: "grokeye",
     demo: "https://www.youtube.com/watch?v=lC4oP8kb9KE",
@@ -32,7 +32,7 @@ export const projects: Project[] = [
   {
     name: "SwatGPT",
     description:
-      "Swarthmore's self-hosted campus assistant, built with SCCS. Local model inference, hybrid retrieval over campus documents, live tools, Keycloak sign-in, and the operational work around a shared service.",
+      "Swarthmore's self-hosted campus LLM, run by SCCS. Qwen3.6-35B-A3B on vLLM, hybrid dense and sparse retrieval over 3,500 scraped campus docs with a 1.5 second fail-open budget, live campus data over MCP, Keycloak login. Nothing leaves campus.",
     github: "https://github.com/swat-sccs/SwatGPT",
     slug: "swatgpt",
     demo: "https://chat.sccs.swarthmore.edu",
@@ -42,7 +42,7 @@ export const projects: Project[] = [
   {
     name: "PINN Research",
     description:
-      "Parameter recovery for a 7-state colorectal cancer ODE model with physics-informed neural networks: forward and inverse learning, integral-residual training, Fisher information, Bayesian calibration, and neural–mechanistic hybrids with targeted intervention experiments.",
+      "Parameter recovery for a 7-state colorectal cancer ODE model with physics-informed neural networks: an integral residual that beat autodiff 50 to 37, Fisher information and Bayesian PINNs for identifiability, and neural-mechanistic hybrids that only learn the mechanism when an experiment drives its input to zero. Paper with Nate Kim and our advisor.",
     github: "https://github.com/aidxhxr/PINN-Research",
     slug: "pinn-research",
     date: "Sep 2026",
@@ -51,7 +51,7 @@ export const projects: Project[] = [
   {
     name: "Breadcrumbs",
     description:
-      "A social-app prototype exploring five posts a day, small groups, and an expiring feed. Product decisions and early implementation notes about making sharing feel more personal.",
+      "Social platform built around intentional sharing. Five items a day, 24-hour expiry, group-based feeds, designed against engagement maximization. Half-built on Supabase.",
     slug: "breadcrumbs",
     date: "Dec 2025",
     tags: ["TypeScript", "Supabase", "Product design"],
@@ -59,7 +59,7 @@ export const projects: Project[] = [
   {
     name: "TickFlow",
     description:
-      "A task-management prototype built with SCCS: a database-backed Kanban board, relational assignments, project search, and Swarm deployment. A technical account of the implemented core and unfinished identity and settings layers.",
+      "Task and project management for student orgs, on SCCS infra. Next.js server actions, Prisma on Postgres, a Swarm service pinned to one node, and no auth yet.",
     github: "https://github.com/swat-sccs/tickflow",
     slug: "building-tickflow",
     date: "Jun 2026",
