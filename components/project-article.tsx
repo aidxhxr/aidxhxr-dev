@@ -1,16 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { posts, type Post } from "@/lib/posts";
+import type { Post } from "@/lib/posts";
 import type { Project } from "@/lib/projects";
 import ArticleNavigation from "./research/article-navigation";
+import RelatedPosts from "./related-posts";
 
 export default function ProjectArticle({ post, project, children }: { post: Post; project?: Project; children: ReactNode }) {
-  const related = posts.filter(p => p.slug !== post.slug).sort((a, b) => Number(b.kind === post.kind) - Number(a.kind === post.kind)).slice(0, 2);
   return (
     <div className="publication project-publication" id="article-top">
       <header className="article-header site-shell">
         <div className="article-breadcrumb"><Link href="/projects">projects</Link><span aria-hidden="true">/</span><span>{project?.name}</span></div>
-        <p className="eyebrow article-category">{post.category}</p>
+        <p className="eyebrow article-category">{post.kind}</p>
         <h1>{post.title}</h1>
         <p className="article-deck">{post.description}</p>
         <div className="article-byline">
@@ -28,9 +28,7 @@ export default function ProjectArticle({ post, project, children }: { post: Post
         <ArticleNavigation key={post.slug} />
         <article id="article-body" className="article-prose">{children}</article>
       </div>
-      <nav className="article-related" aria-label="More writing">
-        {related.map(p => <Link href={`/writing/${p.slug}`} key={p.slug}><span>{p.kind} / {p.readingMinutes} min read</span><strong>{p.title} ↗</strong></Link>)}
-      </nav>
+      <RelatedPosts post={post} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import PinnResearch from "@/content/writing/pinn-research.mdx";
 import HeroArtwork from "@/components/hero-artwork";
 import { researchComponents } from "@/components/mdx/research-components";
 import ArticleNavigation from "./article-navigation";
+import RelatedPosts from "../related-posts";
 
 export default function ResearchArticle({ post, project }: { post: Post; project?: Project }) {
   return (
@@ -13,7 +14,7 @@ export default function ResearchArticle({ post, project }: { post: Post; project
         <div className="article-breadcrumb">
           <Link href="/projects">projects</Link><span aria-hidden="true">/</span><span>{project?.name}</span>
         </div>
-        <p className="eyebrow article-category">{post.category}</p>
+        <p className="eyebrow article-category">{post.kind}</p>
         <h1>{post.title}</h1>
         <p className="article-deck">{post.description}</p>
         <div className="article-byline">
@@ -52,11 +53,7 @@ export default function ResearchArticle({ post, project }: { post: Post; project
           <PinnResearch components={researchComponents()} />
         </article>
       </div>
-      <div className="article-end site-shell">
-        <p className="eyebrow">more</p>
-        <Link href="/projects">all projects <span aria-hidden="true">↗</span></Link>
-        <a href="mailto:aaidark1@swarthmore.edu">aaidark1@swarthmore.edu</a>
-      </div>
+      <RelatedPosts post={post} />
     </div>
   );
 }
