@@ -169,8 +169,6 @@ export default function SandMap() {
     let sim: Sim | null = null;
     let raf = 0;
     let cellPx = 3;
-    const pointer = { x: -1, y: -1, vx: 0, vy: 0, active: false };
-    const blast = { x: 0, y: 0, pending: false };
     let hovered: Pin | null = null;
 
     const setup = () => {
@@ -233,37 +231,6 @@ export default function SandMap() {
           v: 0.3 + Math.random() * 0.4,
           ty,
         });
-      }
-    };
-
-    const eject = (s: Sim, px: number, py: number, r: number, now: number, heal: number) => {
-      const r2 = r * r;
-      const x0 = Math.max(0, Math.floor(px - r));
-      const x1 = Math.min(s.cols - 1, Math.ceil(px + r));
-      const y0 = Math.max(0, Math.floor(py - r));
-      const y1 = Math.min(s.rows - 1, Math.ceil(py + r));
-      for (let y = y0; y <= y1; y++) {
-        for (let x = x0; x <= x1; x++) {
-          const dx = x - px;
-          const dy = y - py;
-          if (dx * dx + dy * dy > r2) continue;
-          const idx = y * s.cols + x;
-          const c = s.filled[idx];
-          if (c < 0 || s.kind[idx] !== K_LAND) continue;
-          s.filled[idx] = -1;
-          const d = Math.max(0.6, Math.hypot(dx, dy));
-          s.particles.push({
-            x,
-            y,
-            vx: (dx / d) * (0.8 + Math.random() * 0.8) + pointer.vx * 0.4,
-            vy: (dy / d) * 0.8 - 0.6 - Math.random() * 0.5 + pointer.vy * 0.4,
-            c,
-          });
-          if (s.phase !== "wind") {
-            s.pending.push({ x, y, at: now + heal });
-            s.remaining++;
-          }
-        }
       }
     };
 
@@ -333,7 +300,6 @@ export default function SandMap() {
             });
             s.nextCourier = now + COURIER_EVERY_MS * (0.6 + Math.random() * 0.8);
           }
-          if (pointer.active) s.holdUntil = Math.max(s.holdUntil, now + 2500);
         }
         if (s.phase === "pour" && s.remaining <= 0 && !s.grains.length) {
           s.phase = "hold";
@@ -398,11 +364,6 @@ export default function SandMap() {
       }
       for (let i = s.couriers.length - 1; i >= 0; i--) {
         if (now - s.couriers[i].t0 > COURIER_MS) s.couriers.splice(i, 1);
-      }
-      if (pointer.active) eject(s, pointer.x, pointer.y, 4, now, 300);
-      if (blast.pending) {
-        blast.pending = false;
-        eject(s, blast.x, blast.y, 11, now, 750);
       }
     };
 
@@ -520,36 +481,14 @@ export default function SandMap() {
       };
     };
     const onMove = (e: PointerEvent) => {
-      const { x: nx, y: ny } = toCell(e);
-      pointer.vx = Math.max(-4, Math.min(4, pointer.active ? nx - pointer.x : 0));
-      pointer.vy = Math.max(-4, Math.min(4, pointer.active ? ny - pointer.y : 0));
-      pointer.x = nx;
-      pointer.y = ny;
-      const near = homeNear(nx, ny);
-      pointer.active = !near;
-      if (near !== hovered) showTip(near);
-    };
-    const onLeave = () => {
-      pointer.active = false;
-      pointer.vx = 0;
-      pointer.vy = 0;
-      showTip(null);
-    };
-    const onDown = (e: PointerEvent) => {
       const { x, y } = toCell(e);
       const near = homeNear(x, y);
-      if (near) {
-        showTip(near);
-        return;
-      }
-      blast.x = x;
-      blast.y = y;
-      blast.pending = true;
+      if (near !== hovered) showTip(near);
     };
+    const onLeave = () => showTip(null);
     if (!reduce) {
       canvas.addEventListener("pointermove", onMove);
       canvas.addEventListener("pointerleave", onLeave);
-      canvas.addEventListener("pointerdown", onDown);
     }
 
     let resizeTimer = 0;
@@ -563,7 +502,6 @@ export default function SandMap() {
       cancelAnimationFrame(raf);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
-      canvas.removeEventListener("pointerdown", onDown);
       ro.disconnect();
       window.clearTimeout(resizeTimer);
     };
@@ -573,7 +511,7 @@ export default function SandMap() {
     <div ref={wrapRef} className="relative w-full select-none" aria-hidden="true">
       <canvas
         ref={canvasRef}
-        className="block w-full cursor-crosshair touch-none"
+        className="block w-full"
         style={{ imageRendering: "pixelated" }}
       />
       <div
