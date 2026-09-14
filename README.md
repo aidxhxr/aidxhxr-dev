@@ -43,7 +43,7 @@ When I want to add something to the writing section, it takes three steps:
 
 Images go in `public/writing/<slug>/`. Inside a post, `<Figure src alt caption width height />`, `<FigureRow>` (two side by side), and `<YouTube id title caption />` are available without importing anything. The publication reader adds linked section headings, scrollable Markdown tables, and `<Equation tex caption />` through `components/mdx/research-components.tsx`. Pass dimensions to figures to reserve space while they load.
 
-Use a final `## Sources and scope` section for project posts so the header's source link has a target. The PINN article uses its own research layout and `Sources and reproducibility` section. The homepage's selected projects and short notes are in `app/page.tsx`. Article illustrations are in `components/work-visual.tsx`.
+End a post with a `## sources` section if its project has a GitHub link; the header's sources link points at it and is hidden otherwise. The PINN article uses its own research layout. The homepage's selected projects and short notes are in `app/page.tsx`. Article illustrations are in `components/work-visual.tsx`.
 
 ## Checks and deployment
 
