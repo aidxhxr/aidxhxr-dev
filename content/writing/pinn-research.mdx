@@ -1,6 +1,6 @@
 This started as a final project for CS066 and did not stop when the semester did. The first version of this post was about learning the method: reimplementing Raissi, reading DeepXDE's source, building a Stiff-PINN curriculum for a combustion ODE, and running sweeps on a GPU that was dramatically overqualified for the job. That's still the first section. The rest is what happened when I pointed all of it at one real model for a summer, with Nate Kim and our advisor, and found out where it stops working.
 
-## the short version of the spring
+## spring
 
 A physics-informed neural network is trained to satisfy a differential equation, not just to fit points. You move the equation to one side so a correct solution makes it zero, evaluate that on the network's output at scattered points, and add whatever's left to the loss. Autodiff gives you the derivatives of the network with respect to its inputs for free. No mesh, no discretization, and the physics does the job data usually does, which is why you can fit with very few noisy observations.
 
@@ -44,7 +44,7 @@ One debugging story from June that changed how I look at plots. The Fourier chec
 
 <Figure src="/writing/pinn-research/beta-catenin-fit.png" alt="β-catenin trajectories for four disease regimes, PINN reconstruction overlaid on the reference solution, with 150 noisy observations per regime and the ATRA treatment window shaded" caption="the forward fit is essentially perfect in all four regimes. this figure is from a run where a third of the recovered parameters were wrong." width={1200} height={675} />
 
-## the fit is not the answer
+## inverse
 
 The first thing I learned this summer is that the picture above means much less than it looks like it means. The network reproduces the β-catenin curve to within the noise, and the parameters that produced that curve are off by 20% in θP and over 100% in a few of the rate constants. Lots of different parameter vectors produce the same trajectory. That isn't a PINN problem, it's the problem, and every method I tried this summer was a different way of asking how bad it is.
 
@@ -52,7 +52,7 @@ Early on we ran a two-parameter version, just W and θP with everything else kno
 
 The full 36-parameter inverse problem, with an autodiff residual, got 4 of 36 within 10% in the normal regime and 8, 7, 7 in the others. That's the baseline.
 
-## the derivative problem
+## the integral residual
 
 I spent a while assuming that was a data problem. It wasn't. Denser, cleaner observations made W worse, not better, going from 0.80 down to 0.50. Gradient matching on frozen networks gave 0.63. Something in the loss itself was biased.
 
@@ -70,7 +70,7 @@ One more thing about that 50: it's the start picked by lowest physics loss out o
 
 The other thing that helped was experimental design, and it helped less than I expected. We started with six conditions that differ only in the retinoic acid protocol: control, no ATRA, early ATRA, late ATRA, low dose, strong circadian. Every one of them enters the WNT/HOX/MYC sub-network through a single door, the RA to HOXA5 term, so the parameters behind that door don't move. Adding WNT pulse, WNT inhibition, MYC pulse and a combo condition helped the classical fit a lot, 61 to 82, and the PINN a little, 26 to 37. Somewhere in the middle I also tried shrinking the networks from 208k weights to 38k with weight decay and alternating network and parameter updates, on the theory that the networks were too flexible. 25. Wasn't that.
 
-## how many are identifiable, four ways
+## identifiability
 
 **Fisher information.** Finite-difference sensitivities of every state to every parameter at 200 time points across all ten conditions, 14,000 observations, `FIM = SᵀS/σ²` in log-parameter coordinates. The condition numbers are 10⁷ to 10¹⁹. Each regime has exactly one null direction, and it's the θP/δ direction: pure δ at normal, mixing into θP as WNT drive rises. The number of parameter pairs correlated above 0.99 goes 0, 1, 6, 10 across the regimes. Fix 28 parameters at truth and the remaining eight have no null direction at all. The first run of this script said all 36 were identifiable because I read the diagonal of a pseudoinverse; I rewrote it the same afternoon to look at null-space participation instead.
 
@@ -118,7 +118,7 @@ The one hybrid that worked cleanly is the APC one, and it worked because of how 
 
 I'd summarize the hybrid results as: a network can learn a mechanism when you can vary the input to that mechanism across experiments, and when you can't, it learns whatever is cheapest, which is usually a constant that belongs to some other term.
 
-## making the anchor bind
+## depletion experiments
 
 That summary suggested an experiment, so after the paper draft I ran it. If the network steals the basal constant because the data never gets near zero, add a condition that drives the regulator to zero and see if it gives the constant back.
 
