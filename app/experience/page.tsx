@@ -23,7 +23,7 @@ const experience: Entry[] = [
     period: "jul 2026 – present",
     location: "menlo park, ca",
     bullets: [
-      "selected as 1 of 10 fellows from Central Asia; work alongside CEO Asset Abdualiyev to launch the VC's for-profit branch shipping \"Company Brain\" AI assistants to small businesses",
+      "selected as 1 of 10 fellows from Central Asia; work alongside the C-suite to ship \"Company Brain\" AI assistants to small businesses",
       "rebuilt the LibreChat UI (React 18, Vite, Tailwind, Radix) into a white-label product live for 6 SMB clients: a d3-force knowledge-graph explorer, a Recharts analytics dashboard, and an approval queue over new Express + MongoDB APIs",
       "cut LLM costs 33% by routing simpler tasks to cheaper models in a two-stage ingestion pipeline (triage, then distillation via OpenRouter) that distills chats into a wikilinked Markdown vault backed by pgvector",
       "provisioned 15+ Linux VPSs with Docker; spent 40+ hours onboarding clients onto white-labeled deployments",
