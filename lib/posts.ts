@@ -5,15 +5,13 @@ export type Post = {
   updatedDate?: string;
   description: string;
   readingMinutes?: number;
-  kind: "Research" | "Engineering" | "Product";
-  category: string;
+  kind: "Research" | "Engineering";
 };
 
 export const posts: Post[] = [
   {
     slug: "company-brain",
     kind: "Engineering",
-    category: "AI systems",
     readingMinutes: 8,
     title: "company brain: a business's chats, distilled into a vault",
     date: "2026-08-30",
@@ -23,7 +21,6 @@ export const posts: Post[] = [
   {
     slug: "pinn-research",
     kind: "Research",
-    category: "Scientific machine learning",
     readingMinutes: 20,
     title: "physics-informed neural networks, six months later",
     date: "2026-08-26",
@@ -33,7 +30,6 @@ export const posts: Post[] = [
   {
     slug: "swatgpt",
     kind: "Engineering",
-    category: "Campus infrastructure",
     readingMinutes: 9,
     title: "swatgpt: a campus llm that stays on campus",
     date: "2026-08-24",
@@ -43,7 +39,6 @@ export const posts: Post[] = [
   {
     slug: "grokeye",
     kind: "Engineering",
-    category: "Multimodal interfaces",
     readingMinutes: 8,
     title: "grokeye: hands-free ar coaching, built in a day at grokathon",
     date: "2026-08-10",
@@ -52,8 +47,7 @@ export const posts: Post[] = [
   },
   {
     slug: "breadcrumbs",
-    kind: "Product",
-    category: "Social software",
+    kind: "Engineering",
     readingMinutes: 5,
     title: "breadcrumbs: a social platform built around what you don't post",
     date: "2026-03-10",
@@ -62,8 +56,7 @@ export const posts: Post[] = [
   },
   {
     slug: "building-tickflow",
-    kind: "Product",
-    category: "Student org software",
+    kind: "Engineering",
     readingMinutes: 5,
     title: "building tickflow: task management for student orgs",
     date: "2026-02-20",

@@ -39,7 +39,7 @@ That's it — it'll be live at `localhost:3000`.
 
 When I want to add something to the writing section, it takes three steps:
 
-1. Add the post's metadata to `lib/posts.ts`, including its kind (`Research`, `Engineering`, or `Product`), category, and reading time. If it's a project, link it from `lib/projects.ts` with the same `slug`. Projects without a write-up just need `github`, `demo`, or `press` links.
+1. Add the post's metadata to `lib/posts.ts`, including its kind (`Research` or `Engineering`) and reading time. If it's a project, link it from `lib/projects.ts` with the same `slug`. Projects without a write-up just need `github`, `demo`, or `press` links.
 2. Create the matching `content/writing/<slug>.mdx` file and write the post.
 3. Import it in `app/writing/[slug]/page.tsx` and add it to `postComponents`.
 
