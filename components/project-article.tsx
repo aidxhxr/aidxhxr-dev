@@ -10,8 +10,8 @@ export default function ProjectArticle({ post, project, children }: { post: Post
   return (
     <div className="publication project-publication" id="article-top">
       <header className="article-header site-shell">
-        <div className="article-breadcrumb"><Link href="/#featured-work">Selected work</Link><span aria-hidden="true">/</span><span>{project?.name}</span></div>
-        <p className="eyebrow article-category">{post.category} / {post.kind === "Product" ? "Build notes" : "Engineering notes"}</p>
+        <div className="article-breadcrumb"><Link href="/projects">projects</Link><span aria-hidden="true">/</span><span>{project?.name}</span></div>
+        <p className="eyebrow article-category">{post.category}</p>
         <h1>{post.title}</h1>
         <p className="article-deck">{post.description}</p>
         <div className="article-byline">
@@ -20,12 +20,12 @@ export default function ProjectArticle({ post, project, children }: { post: Post
           <span aria-hidden="true">·</span><span>{post.readingMinutes} min read</span>
         </div>
         <div className="article-resource-links">
-          {project?.github && <a href={project.github} target="_blank" rel="noopener noreferrer">Explore the code <span aria-hidden="true">↗</span></a>}
-          {project?.demo && <a href={project.demo} target="_blank" rel="noopener noreferrer">{post.slug === "grokeye" ? "Watch the demo" : "Visit the project"} <span aria-hidden="true">↗</span></a>}
-          <a href="#sources-and-scope">Sources &amp; scope <span aria-hidden="true">↓</span></a>
+          {project?.github && <a href={project.github} target="_blank" rel="noopener noreferrer">github <span aria-hidden="true">↗</span></a>}
+          {project?.demo && <a href={project.demo} target="_blank" rel="noopener noreferrer">demo <span aria-hidden="true">↗</span></a>}
+          {project?.github && <a href="#sources">sources <span aria-hidden="true">↓</span></a>}
         </div>
       </header>
-      <figure className="project-cover"><WorkVisual slug={post.slug} /><figcaption>An illustration of the idea behind {project?.name}.</figcaption></figure>
+      <figure className="project-cover"><WorkVisual slug={post.slug} /><figcaption>illustration, not a screenshot</figcaption></figure>
       <div className="article-layout site-shell">
         <ArticleNavigation key={post.slug} />
         <article id="article-body" className="article-prose">{children}</article>

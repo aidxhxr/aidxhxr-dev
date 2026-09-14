@@ -15,10 +15,7 @@ export default function ResearchArticle({ post, project }: { post: Post; project
         </div>
         <p className="eyebrow article-category">Scientific machine learning</p>
         <h1>{post.title}</h1>
-        <p className="article-deck">
-          From the first physics-informed network to parameter inference and neural–mechanistic models:
-          an experimental account of what the data can tell us.
-        </p>
+        <p className="article-deck">{post.description}</p>
         <div className="article-byline">
           <span>Amirkhan Aidarkhan</span><span aria-hidden="true">·</span>
           <time dateTime={post.date}>
@@ -31,15 +28,15 @@ export default function ResearchArticle({ post, project }: { post: Post; project
         <div className="article-resource-links">
           {project?.github && (
             <a href={project.github} target="_blank" rel="noopener noreferrer">
-              Explore the code <span aria-hidden="true">↗</span>
+              github <span aria-hidden="true">↗</span>
             </a>
           )}
-          <a href="#sources-and-reproducibility">Methods &amp; sources <span aria-hidden="true">↓</span></a>
+          <a href="#sources">sources <span aria-hidden="true">↓</span></a>
         </div>
       </header>
       <div className="article-cover">
         <div className="cover-copy">
-          <span className="eyebrow">WNT–RA–HOX / Research field notes</span>
+          <span className="eyebrow">WNT–RA–HOX / summer 2026</span>
           <p>The trajectory is visible.<br /><em>The mechanism is not.</em></p>
           <div className="cover-scale">
             <span><strong>07</strong>State variables</span>
@@ -56,9 +53,9 @@ export default function ResearchArticle({ post, project }: { post: Post; project
         </article>
       </div>
       <div className="article-end site-shell">
-        <p className="eyebrow">Keep exploring</p>
-        <Link href="/projects">More from the workbench <span aria-hidden="true">↗</span></Link>
-        <a href="mailto:aaidark1@swarthmore.edu">Questions or ideas? Let’s talk.</a>
+        <p className="eyebrow">more</p>
+        <Link href="/projects">all projects <span aria-hidden="true">↗</span></Link>
+        <a href="mailto:aaidark1@swarthmore.edu">aaidark1@swarthmore.edu</a>
       </div>
     </div>
   );
